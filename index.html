@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Escapa Escapa</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+  <div id="game-wrapper">
+    <canvas id="game" width="480" height="270"></canvas>
+
+    <!-- MENU -->
+    <div id="overlay-menu" class="overlay">
+      <div class="panel">
+        <h1 class="title">Escapa<br>Escapa</h1>
+        <p class="subtitle">¡Llega a la meta!</p>
+        <div class="menu-name-row">
+          <label for="menu-name-input" class="menu-name-label">Tu nombre:</label>
+          <input id="menu-name-input" type="text" maxlength="12" placeholder="Jugador" autocomplete="off">
+        </div>
+        <button id="btn-start" class="btn btn-primary">▶ JUGAR</button>
+        <button id="btn-hiscores-menu" class="btn">🏆 RÉCORDS</button>
+        <div class="controls-hint">
+          <span>⬆ / ESPACIO = subir carril</span>
+          <span>⬇ = bajar carril</span>
+          <span>P / ESC = pausa</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAUSE -->
+    <div id="overlay-pause" class="overlay hidden">
+      <div class="panel">
+        <h2>⏸ PAUSA</h2>
+        <button id="btn-resume" class="btn btn-primary">▶ CONTINUAR</button>
+        <button id="btn-restart-pause" class="btn">↺ REINICIAR</button>
+        <div class="options-section">
+          <label class="option-row">
+            <span>Volumen</span>
+            <input id="vol-slider" type="range" min="0" max="100" value="70">
+          </label>
+          <label class="option-row">
+            <input id="chk-radar" type="checkbox" checked>
+            <span>Mostrar radar</span>
+          </label>
+          <label class="option-row">
+            <input id="chk-mute" type="checkbox">
+            <span>Silencio</span>
+          </label>
+        </div>
+        <button id="btn-menu-pause" class="btn btn-small">⬅ MENÚ</button>
+      </div>
+    </div>
+
+    <!-- DEAD -->
+    <div id="overlay-dead" class="overlay hidden">
+      <div class="panel">
+        <h2 class="dead-title">💀 ¡Player cayó!</h2>
+        <div id="dead-stats" class="stats-block"></div>
+        <button id="btn-restart-dead" class="btn btn-primary">↺ REINTENTAR</button>
+        <button id="btn-menu-dead" class="btn">⬅ MENÚ</button>
+      </div>
+    </div>
+
+    <!-- VICTORY -->
+    <div id="overlay-victory" class="overlay hidden">
+      <div class="panel panel-victory">
+        <h2 class="victory-title">🎉 ¡Player escapó!</h2>
+        <div id="victory-stats" class="stats-block"></div>
+        <button id="btn-restart-victory" class="btn btn-primary">▶ JUGAR DE NUEVO</button>
+        <button id="btn-menu-victory" class="btn">⬅ MENÚ</button>
+      </div>
+    </div>
+
+    <!-- HIGH SCORES -->
+    <div id="overlay-hiscore" class="overlay hidden">
+      <div class="panel">
+        <h2>🏆 RÉCORDS</h2>
+        <div id="scores-list" class="scores-list"></div>
+        <button id="btn-close-hiscores" class="btn">CERRAR</button>
+      </div>
+    </div>
+
+    <!-- Mobile pause button -->
+    <button id="pause-btn" aria-label="Pausa">⏸</button>
+  </div>
+  <script src="game.js"></script>
+</body>
+
+</html>
