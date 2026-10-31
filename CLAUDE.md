@@ -21,7 +21,7 @@ src/main.ts             — Boot: language, renderer, UI/input binding, layout, 
 src/constants.ts        — CW/CH, LANE_Y, LANE_GAP, speeds, jump timing, P
 src/i18n.ts             — es/en dictionaries, t(), applyDomI18n()
 src/storage.ts          — The only localStorage access point
-src/audio.ts            — Web Audio synth SFX
+src/audio.ts            — Web Audio synth SFX + procedural music (theme per biome, step sequencer)
 src/haptics.ts          — Vibration API patterns
 src/input.ts            — Keyboard, tap-to-lane pointer input, auto-pause hooks
 src/ui.ts               — setState(), overlays, options panel, pause confirm, results
@@ -55,6 +55,8 @@ src/game/logic.ts       — Combo, achievements, collisions, startGame(), update
 - **`player.targetLane`** is the lane being moved to; **`player.lane`** lags until the jump lands. Collision and expression logic use `targetLane`. Obstacles in lanes crossed mid-jump never collide.
 - **Retargeting mid-jump is allowed:** `moveToLane()` restarts the arc from the current Y (`fromY`); there is no input lock. Jump duration and arc height scale with √(distance in lanes).
 - **`obs.passed` / `obs.scored`** prevent double-counting.
+- **Obstacles spawn off-screen at `PLAYER_X + SPAWN_AHEAD`** and the radar maps exactly `[player.x, player.x + SPAWN_AHEAD]` to its width, so it previews what is coming. Change both together via `SPAWN_AHEAD`.
+- **The DOM pause button covers the top-right corner** while playing: keep canvas HUD out of the last `PAUSE_BTN_INSET` px (`hud.ts`).
 - **State changes go through `setState()`** (`ui.ts`); it toggles overlays, the `.playing` class, resets the pause confirmation and closes options when play resumes.
 - **All UI text goes through i18n.** DOM uses `data-i18n`, `data-i18n-placeholder`, `data-i18n-aria`; canvas uses `t()`. Every key must exist in both `es` and `en` (`en` is typed as `Record<Key, string>`, so a missing key fails the build).
 - **Player name:** `world.playerName` is the raw input (may be empty); display it with `displayName()`, which falls back to the localized default.
@@ -63,6 +65,7 @@ src/game/logic.ts       — Combo, achievements, collisions, startGame(), update
 ## Design Decisions
 
 - **Touch input = tap-to-lane:** `pointerdown` anywhere on the page (letterbox bars included) jumps to the lane nearest to the touch Y. No swipe/drag. Keyboard ↑/Space/↓ steps one lane.
+- **Control feedback:** right-edge lane tabs (target lane lit), a brief glow over the chosen lane's tap zone (`world.laneFlash`, set in `moveToLane`) and a landing outline while jumping. No tutorial, no on-screen buttons.
 - **Orientation:** landscape 16:9 only; touch devices in portrait get a rotate notice and the run auto-pauses (also on tab hide).
 - **Targets:** Android Chrome + iOS Safari. iOS has no Vibration API (option hidden) and no element fullscreen on iPhone (button hidden). iOS unlocks audio on `pointerup`/`click`, not `pointerdown`.
 - **Phases:** Phase 1 (port + touch + deploy + i18n/options) is done. Phase 2+: new mechanics, generative music, post-processing/shader effects.
@@ -96,6 +99,9 @@ src/game/logic.ts       — Combo, achievements, collisions, startGame(), update
 
 - SFX live in `sounds` (`audio.ts`): closures calling `tone(freq, dur, wave, vol, delay)`. Play with `audio.play('name')`.
 - The `AudioContext` is created lazily on the first user gesture (`audio.init()`); never at module load.
+- Music: themes `menu | city | forest | sky` in `THEMES` (bpm + 4-bar progression, all in A minor) with per-theme patterns in `playStep()`. All themes share one 16th-note step clock (look-ahead scheduler), so `audio.setMusic(theme, fadeS)` crossfades in time.
+- Who sets the music: `setState()` (`ui.ts`) → menu theme on MENU/HISCORE, biome theme in a run (muffled while PAUSED), silence on DEAD/VICTORY. `update()` follows the biome (`biomeTheme()`, 3 s crossfade) and raises tempo with the goal rush (`setIntensity`).
+- Adding a biome theme: add it to `MusicSection`/`THEMES` and a `case` in `playStep()`; the name must match the biome name.
 - Vibration patterns live in `PATTERNS` (`haptics.ts`); play with `haptics.play('name')`.
 
 ## localStorage Keys
@@ -106,7 +112,7 @@ src/game/logic.ts       — Combo, achievements, collisions, startGame(), update
 | `player2_hiscores` | Top-5 `{ name, score, stats, date }` |
 | `player2_daily` | Daily best by `YYYY-MM-DD` (UTC) key |
 | `player2_achievements` | Unlocked achievement timestamps |
-| `player2_options` | `{ volume, showRadar, mute, lang, vibration, reduceMotion }` |
+| `player2_options` | `{ sfxVolume, musicVolume, showRadar, mute, lang, vibration, reduceMotion }` (a v1 `volume` field migrates to `sfxVolume`) |
 
 All access goes through `storage.ts`. Never call `localStorage` directly elsewhere.
 

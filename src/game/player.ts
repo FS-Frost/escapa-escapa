@@ -1,10 +1,12 @@
-import { LANE_Y, LANE_COUNT, LANE_GAP, LANE_ANIM_DUR, LANE_ARC } from '../constants';
+import { LANE_Y, LANE_COUNT, LANE_GAP, LANE_ANIM_DUR, LANE_ARC, PLAYER_X } from '../constants';
 import { audio } from '../audio';
 import { haptics } from '../haptics';
 import { world, STATE } from './world';
 import { spawnLaneTrailArc } from './particles';
 
-export type Expression = 'normal' | 'hurt' | 'scared' | 'rush' | 'happy';
+export const LANE_FLASH_DUR = 0.3;
+
+export type Expression ='normal' | 'hurt' | 'scared' | 'rush' | 'happy';
 
 export interface Player {
   lane: number;        // lags behind targetLane until the jump lands
@@ -29,7 +31,7 @@ export function createPlayer(): Player {
   return {
     lane: 0, targetLane: 0, laneT: 1,
     fromY: LANE_Y[0], jumpDur: LANE_ANIM_DUR, jumpArc: LANE_ARC,
-    x: 80, y: LANE_Y[0], w: 16, h: 16,
+    x: PLAYER_X, y: LANE_Y[0], w: 16, h: 16,
     hp: 1, maxHp: 1,
     hitFlash: 0, invincible: 0,
     expression: 'normal',
@@ -69,12 +71,14 @@ export function moveToLane(lane: number) {
   p.laneT = 0;
   p.jumpDur = LANE_ANIM_DUR * Math.sqrt(span);
   p.jumpArc = LANE_ARC * Math.sqrt(span);
+  world.laneFlash = { lane: next, life: LANE_FLASH_DUR };
   audio.play('jump');
   haptics.play('jump');
 }
 
 export function updatePlayerMotion(dt: number) {
   const p = world.player;
+  if (world.laneFlash && (world.laneFlash.life -= dt) <= 0) world.laneFlash = null;
   if (p.laneT < 1) {
     p.laneT = Math.min(1, p.laneT + dt / p.jumpDur);
     if (p.laneT >= 1) p.lane = p.targetLane;

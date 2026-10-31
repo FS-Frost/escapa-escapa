@@ -75,6 +75,7 @@ MENU → PLAYING ←→ PAUSED
 - **Auto-pause:** when the page is hidden, or a touch device rotates to portrait.
 - **iOS audio unlock:** `audio.init()` also runs on `pointerup`, since iOS doesn't count `pointerdown` as a user activation.
 - **Gestures:** `touch-action: none` and `user-select: none` on the body stop scroll, zoom and selection; overlay panels allow vertical panning.
+- **Feedback:** three tabs with a left-pointing chevron on the right edge mark the tappable lanes, and the target lane's tab is lit. Choosing a lane (touch or keyboard) makes its tap zone (`LANE_Y ± LANE_GAP/2`, exactly what `laneAtY` uses) glow for 0.3 s. While jumping, an outline shows where the cube will land.
 
 ---
 
@@ -100,6 +101,14 @@ A bottom→top jump takes ≈0.21 s with a higher arc. A new input during a jump
 ## Spawner
 
 Weighted random pattern selection over `SPAWN_PATTERNS`. The spawn interval shrinks with score: `interval = max(0.45, 1.2 − score·0.005) + random(0..0.3)`. If HP is below max, there is a 15% chance to spawn a Big M Orb instead.
+
+Obstacles spawn off-screen at `PLAYER_X + SPAWN_AHEAD` (1280 px; the screen ends at 480). The spacing between obstacles depends only on the interval and the speed, so the pace is the same as spawning at the screen edge; the first obstacle just takes ~7 s longer to show up.
+
+---
+
+## Radar
+
+The 26 px strip at the top maps the distance ahead of the player, `[0, SPAWN_AHEAD]`, to its full width (minus the pause-button corner), so dots enter on the right as obstacles spawn and reach the left edge when they reach the player. That gives ~7 s of warning before an obstacle is on screen at base speed (~3 s at 2.5×). A light band marks the part already visible on screen. The goal beacon stays pinned to the right edge until it is within range. The player's lane is marked on the left edge.
 
 ---
 
@@ -169,7 +178,33 @@ Square particles that fade over their life (`src/game/particles.ts`).
 
 ## Audio
 
-Web Audio synthesis: each SFX schedules `Oscillator → Gain → master gain` with an exponential decay. The `AudioContext` is created lazily on the first user gesture; the master gain implements volume and mute.
+All audio is synthesized with Web Audio. The `AudioContext` is created lazily on the first user gesture and suspended while the tab is hidden.
+
+```
+theme voices → themeGain[theme] → musicBus → musicFilter (lowpass) → musicGain ┐
+sfx voices → sfxGain ────────────────────────────────────────────────────────────┴→ master (mute) → compressor → out
+```
+
+### Music
+
+The music is a 16th-note step sequencer over a 4-bar progression, scheduled ahead with a look-ahead timer (25 ms tick, 120 ms window). All progressions are in A minor so themes blend during crossfades.
+
+| Theme | When | BPM | Progression | Character |
+|-------|------|-----|-------------|-----------|
+| menu | MENU, HISCORE | 92 | Am F C G | Pad, soft triangle bass and arpeggio |
+| city | City biome | 116 | Am F C G | Octave saw bass, 16th square arpeggio, four-on-the-floor kick, snare, hats |
+| forest | Forest biome | 104 | Am Em F G | Bouncy triangle bass, plucked up/down arpeggio, light kick, shaker |
+| sky | Sky biome | 96 | Fmaj7 Em7 Dm7 Cmaj7 | Wide pads, high sine arpeggio in threes, sparse beat |
+
+- Every theme has its own gain on one shared step clock. `setMusic(theme, fadeS)` ramps the gains, and the fading theme keeps being scheduled until it's silent.
+- Biome changes crossfade over 3 s, matching the visual crossfade; menu ↔ run fades over 0.6 s; music stops (0.3 s) on death and victory, which have their own stinger SFX.
+- Pause muffles the music by closing the lowpass filter to 500 Hz.
+- During the goal rush, game themes speed up by up to 25% (`intensity = (speedBoost − 1) / 1.5`).
+- Music volume uses a squared curve (`(v/100)² · 0.5`); SFX volume is linear.
+
+### SFX
+
+Each SFX schedules `Oscillator → Gain → sfxGain` with an exponential decay.
 
 | Sound | Waveform | Character |
 |-------|----------|-----------|
@@ -203,7 +238,8 @@ Shared panel reachable from the main menu and the pause menu:
 | Option | Effect |
 |--------|--------|
 | Language | es / en |
-| Volume / Mute | Master gain |
+| Music / Effects | Separate music and SFX volume |
+| Mute | Master gain |
 | Vibration | Haptics on/off (hidden without API) |
 | Show radar | Radar strip |
 | Reduce motion | Disables screen shake, hit flash, speed lines; default follows `prefers-reduced-motion` |
@@ -221,9 +257,9 @@ Pause also offers resume, restart and back-to-menu (both destructive actions ask
 | `player2_hiscores` | Top 5 `{ name, score, stats, date }`, sorted desc |
 | `player2_daily` | `{ "YYYY-MM-DD": bestScore }` (UTC date) |
 | `player2_achievements` | `{ achievementId: timestamp }` |
-| `player2_options` | `{ volume, showRadar, mute, lang, vibration, reduceMotion }` |
+| `player2_options` | `{ sfxVolume, musicVolume, showRadar, mute, lang, vibration, reduceMotion }` |
 
-Keys are unchanged from v1. Options missing newer fields fall back to defaults. All access is wrapped in try/catch so the game degrades silently in private browsing. Record names are rendered with `textContent`, never `innerHTML`.
+Keys are unchanged from v1. Options missing newer fields fall back to defaults, and the v1 single `volume` becomes `sfxVolume`. All access is wrapped in try/catch so the game degrades silently in private browsing. Record names are rendered with `textContent`, never `innerHTML`.
 
 ---
 
@@ -231,7 +267,7 @@ Keys are unchanged from v1. Options missing newer fields fall back to defaults. 
 
 - Landscape 16:9 only; portrait on touch devices shows a rotate notice (CSS media query) and auto-pauses.
 - The layout respects safe-area insets (`viewport-fit=cover` + body padding).
-- The pause button grows to 44 px on coarse pointers; the HUD hearts sit left of it.
+- The pause button grows to 44 px on coarse pointers; the HUD hearts and the radar scale end left of it (`PAUSE_BTN_INSET`).
 
 ---
 
@@ -240,6 +276,8 @@ Keys are unchanged from v1. Options missing newer fields fall back to defaults. 
 ```ts
 CW = 480, CH = 270          // logical resolution
 RADAR_H = 26                // radar strip height
+PLAYER_X = 80               // player's fixed x
+SPAWN_AHEAD = 1200          // spawn distance ahead of the player = radar range
 LANE_Y = [210, 160, 110]    // lane centers (bottom → top)
 LANE_GAP = 50               // px between lanes
 BASE_SPEED = 110            // px/s

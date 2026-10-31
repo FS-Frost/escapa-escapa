@@ -168,6 +168,12 @@ export function drawBackground() {
   }
 }
 
+// Music theme for the biome being shown (or faded into); names match MusicSection.
+export function biomeTheme(): BiomeName {
+  const i = world.biomeTransition?.to ?? world.currentBiome;
+  return BIOMES[Math.min(i, BIOMES.length - 1)].name;
+}
+
 export function updateBiomes(dt: number) {
   const newBiome = BIOMES.reduce((cur, b, i) => world.score >= b.scoreStart ? i : cur, 0);
   if (newBiome !== world.currentBiome && !world.biomeTransition) {

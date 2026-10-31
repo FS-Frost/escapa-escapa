@@ -220,6 +220,12 @@ h2 {
   cursor: pointer;
 }
 
+/* Same label width so the sliders line up */
+.option-row span:has(+ input[type="range"]) {
+  min-width: 5.5em;
+  text-align: left;
+}
+
 .option-row input[type="range"] {
   flex: 1;
   accent-color: #a855f7;

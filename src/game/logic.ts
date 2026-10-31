@@ -9,10 +9,11 @@ import { createPlayer, updatePlayerMotion } from './player';
 import { type Obstacle, updateObstacle, drawObstacle, updateSpawner, spawnGoal, updateGoal, drawGoal } from './obstacles';
 import { spawnSparkles, spawnHitStars, spawnTrail, updateParticles, drawParticles } from './particles';
 import { drawPlayer } from './sprites';
-import { drawBackground, updateBiomes } from './biomes';
+import { drawBackground, updateBiomes, biomeTheme } from './biomes';
 import {
   drawRadar, drawHUD, showComboPopup, updateComboPopups, drawComboPopups,
   updateAchievementBanner, drawAchievementBanner, drawSpeedLines,
+  drawLaneFlash, drawLandingGhost, drawLaneMarkers,
 } from './hud';
 import { setState, showDeadScreen, showVictoryScreen } from '../ui';
 
@@ -183,6 +184,7 @@ export function startGame() {
     currentBiome: 0,
     spawnTimer: 1.5,
     particles: [],
+    laneFlash: null,
     runStats: { maxStreak: 0, maxMult: 1 },
   });
   setState(STATE.PLAYING);
@@ -195,6 +197,9 @@ export function update(dt: number) {
   w.worldX += w.scrollSpeed * w.speedBoost * dt;
 
   updateBiomes(dt);
+  // Theme crossfade follows the 3 s visual biome crossfade; tempo rises with the goal rush.
+  audio.setMusic(biomeTheme(), 3);
+  audio.setIntensity(w.goalApproaching ? (w.speedBoost - 1) / 1.5 : 0);
 
   if (w.goalApproaching) {
     w.goalAlarmTimer += dt;
@@ -255,8 +260,11 @@ export function render() {
 
   drawBackground();
 
-  if (w.state === STATE.PLAYING || w.state === STATE.PAUSED) {
+  const inRun = w.state === STATE.PLAYING || w.state === STATE.PAUSED;
+  if (inRun) {
+    drawLaneFlash();
     for (const o of w.obstacles) if (o.lane < p.targetLane) drawObstacle(o);
+    drawLandingGhost();
     const flash = p.hitFlash > 0 && !w.opts.reduceMotion && Math.floor(p.hitFlash * 12) % 2 === 0;
     drawPlayer(p.x, p.y, p.expression, flash, p.maxHp > 1);
     for (const o of w.obstacles) if (o.lane >= p.targetLane) drawObstacle(o);
@@ -265,6 +273,7 @@ export function render() {
   if (w.goal && w.goal.active) drawGoal(w.goal);
   drawSpeedLines();
   drawParticles();
+  if (inRun) drawLaneMarkers();
   drawComboPopups();
   drawAchievementBanner();
   drawHUD();

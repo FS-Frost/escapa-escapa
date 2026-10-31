@@ -51,14 +51,16 @@ Jumping from the bottom to the top lane is a single arc; obstacles in the middle
 ## Features
 
 - **Tap-to-lane** touch control with smooth arcs and mid-jump retargeting
-- **Radar strip** showing color-coded incoming hazards and the goal beacon
+- **Radar strip** previewing color-coded hazards ~7 seconds before they reach the screen, plus the goal beacon
+- **Visual control feedback**: lane markers on the right edge, a glow on the chosen lane, and a landing outline
 - **Combo multiplier** up to ×4 with popups
 - **3 biomes** — City → Forest → Sky — with parallax and crossfades
 - **Procedural pixel font**, crisp at any screen size
-- **Synthesized audio** (Web Audio API) and **vibration** on supported phones
+- **Procedural music**: a theme per biome (plus a menu theme) with crossfades, speeding up as the goal approaches
+- **Synthesized sound effects** (Web Audio API) and **vibration** on supported phones
 - **Achievements**, **top-5 high scores** with your name, and a daily best
 - **Spanish / English**, auto-detected and switchable
-- **Options** (from the main menu and pause): language, volume, mute, vibration, radar, reduce motion, fullscreen
+- **Options** (from the main menu and pause): language, music and effects volume, mute, vibration, radar, reduce motion, fullscreen
 - **Mobile-ready**: landscape layout with safe areas, rotate notice in portrait, auto-pause when the app is hidden or rotated
 
 ## Achievements

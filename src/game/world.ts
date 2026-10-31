@@ -12,6 +12,7 @@ export type State = typeof STATE[keyof typeof STATE];
 export interface ComboPopup { text: string; x: number; y: number; life: number; maxLife: number; vy: number; color: Color; }
 export interface Banner { text: string; life: number; maxLife: number; }
 export interface BiomeTransition { from: number; to: number; t: number; dur: number; }
+export interface LaneFlash { lane: number; life: number; }
 
 // Single mutable game state shared by all game modules.
 export const world = {
@@ -36,6 +37,7 @@ export const world = {
   biomeTransition: null as BiomeTransition | null,
   currentBiome: 0,
   particles: [] as Particle[],
+  laneFlash: null as LaneFlash | null, // highlight of the lane just chosen
   spawnTimer: 0,
   runStats: {} as RunStats,
   opts: storage.getOptions(),
