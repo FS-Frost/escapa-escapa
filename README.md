@@ -34,7 +34,7 @@ Jumping from the bottom to the top lane is a single arc; obstacles in the middle
 1. Obstacles scroll in from the right across three lanes (top, mid, bottom).
 2. Change lanes to avoid them. Each avoided obstacle earns **1 point × your current multiplier**.
 3. Avoid 5 obstacles in a row to raise your multiplier: **×1 → ×2 → ×3 → ×4**.
-4. At **100 points** the goal flag appears on the radar and arrives in about **30 seconds** while the pace speeds up.
+4. At **100 points** the goal flag appears on the radar and a progress bar; it arrives in about **30 seconds** while the pace and the music speed up.
 5. Reach the goal to win.
 
 ## Obstacles
@@ -53,6 +53,7 @@ Jumping from the bottom to the top lane is a single arc; obstacles in the middle
 - **Tap-to-lane** touch control with smooth arcs and mid-jump retargeting
 - **Radar strip** previewing color-coded hazards ~7 seconds before they reach the screen, plus the goal beacon
 - **Visual control feedback**: lane markers on the right edge, a glow on the chosen lane, and a landing outline
+- **Optional interactive tutorial**: offered the first time you play (controls, radar and a practice dodge), replayable from Options
 - **Combo multiplier** up to ×4 with popups
 - **3 biomes** — City → Forest → Sky — with parallax and crossfades
 - **Procedural pixel font**, crisp at any screen size

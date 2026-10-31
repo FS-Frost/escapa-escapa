@@ -99,7 +99,18 @@
           </label>
         </div>
         <button id="btn-fullscreen" class="btn"></button>
+        <button id="btn-tutorial" class="btn" data-i18n="opts.tutorial"></button>
         <button id="btn-close-options" class="btn btn-primary" data-i18n="opts.back"></button>
+      </div>
+    </div>
+
+    <!-- TUTORIAL OFFER (first time JUGAR is pressed) -->
+    <div id="overlay-tutorial-offer" class="overlay overlay-top hidden">
+      <div class="panel">
+        <h2 data-i18n="tut.offer.title"></h2>
+        <p class="subtitle" data-i18n="tut.offer.body"></p>
+        <button id="btn-tutorial-yes" class="btn btn-primary" data-i18n="tut.offer.yes"></button>
+        <button id="btn-tutorial-no" class="btn" data-i18n="tut.offer.no"></button>
       </div>
     </div>
 
@@ -142,6 +153,7 @@
 
     <!-- Mobile pause button -->
     <button id="pause-btn" data-i18n-aria="pause.aria">⏸</button>
+    <button id="tutorial-skip" data-i18n="tut.skip"></button>
   </div>
 
   <!-- Portrait notice (touch devices only, via CSS) -->

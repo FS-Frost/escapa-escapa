@@ -106,12 +106,15 @@ export interface Goal {
   active: boolean;
   flash: boolean;
   flashTimer: number;
+  startDist: number; // distance to the player at spawn, for the progress bar
 }
 
 export function spawnGoal() {
   const dist = world.scrollSpeed * world.speedBoost * GOAL_TRAVEL_TIME;
-  world.goal = { x: CW + dist, y: LANE_Y[0], w: 20, h: 40, active: true, flash: false, flashTimer: 0 };
-  world.goalAlarmTimer = 0;
+  const x = CW + dist;
+  world.goal = { x, y: LANE_Y[0], w: 20, h: 40, active: true, flash: false, flashTimer: 0, startDist: x - PLAYER_X };
+  world.goalTimer = 0;
+  world.goalCountdown = 0;
 }
 
 export function updateGoal(g: Goal, dt: number, spd: number) {
