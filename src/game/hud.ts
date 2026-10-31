@@ -1,7 +1,8 @@
 import { CW, CH, RADAR_H, LANE_COUNT } from '../constants';
 import { R } from '../gfx/renderer';
 import { rgba } from '../gfx/color';
-import { world } from './world';
+import { world, displayName } from './world';
+import { t, type Key } from '../i18n';
 import type { ObsType } from './obstacles';
 
 // ===== RADAR =====
@@ -50,7 +51,7 @@ export function drawHUD() {
     R.text(`x${player.comboMultiplier}`, 6, RADAR_H + 23, MULT_COLORS[player.comboMultiplier]);
   }
   if (player.comboStreak > 0) {
-    R.text(`${player.comboStreak} streak`, 6, RADAR_H + 33, '#88ddff');
+    R.text(t('hud.streak', { n: player.comboStreak }), 6, RADAR_H + 33, '#88ddff');
   }
 
   // Hearts start left of the DOM pause button that overlaps the top-right corner.
@@ -58,27 +59,29 @@ export function drawHUD() {
   for (let i = 0; i < player.maxHp; i++) {
     R.text('♥', hx - i * 18, RADAR_H + 5, i < player.hp ? '#ff4466' : '#442233', { scale: 2, align: 'right' });
   }
-  R.text(world.playerName, hx - player.maxHp * 18 - 4, RADAR_H + 9, '#aaaacc', { align: 'right' });
+  R.text(displayName(), hx - player.maxHp * 18 - 4, RADAR_H + 9, '#aaaacc', { align: 'right' });
 
   if (world.goalApproaching) {
     const pulse = Math.sin(world.gameTime * 8) * 0.5 + 0.5;
-    R.text('¡LA META SE ACERCA!', CW / 2, RADAR_H + 9,
+    R.text(t('hud.goal'), CW / 2, RADAR_H + 9,
       rgba(255, Math.floor(100 + pulse * 155), 0, 0.7 + pulse * 0.3), { align: 'center' });
   }
 
   if (score >= hiScore && score > 0) {
     // Sits above the achievement banner while it is showing
-    R.text('¡NUEVO RÉCORD!', CW / 2, world.achievementBanner ? CH - 38 : CH - 9, '#ffd700', { align: 'center' });
+    R.text(t('hud.newRecord'), CW / 2, world.achievementBanner ? CH - 38 : CH - 9, '#ffd700', { align: 'center' });
   }
 }
 
 // ===== COMBO POPUPS =====
-const COMBO_MSGS: Record<number, string> = { 2: 'x2 COMBO!', 3: 'x3 COMBO!', 4: 'UNTOUCHABLE!' };
+const COMBO_KEYS: Record<number, Key> = { 2: 'combo.2', 3: 'combo.3', 4: 'combo.4' };
 const COMBO_COLORS = ['', '', '#ffd700', '#ff8c00', '#ff4444'];
 
 export function showComboPopup(mult: number) {
+  const key = COMBO_KEYS[mult];
+  if (!key) return;
   world.comboPopups.push({
-    text: COMBO_MSGS[mult] || '', x: CW / 2, y: 140,
+    text: t(key), x: CW / 2, y: 140,
     life: 1.2, maxLife: 1.2, vy: -20, color: COMBO_COLORS[mult],
   });
 }
@@ -115,14 +118,14 @@ export function drawAchievementBanner() {
   R.alpha *= Math.min(1, b.life / b.maxLife * 3);
   R.rect(0, CH - 28, CW, 22, '#7c3aed');
   R.strokeRect(0, CH - 28, CW, 22, '#ffd700');
-  R.text('★ LOGRO: ' + b.text, CW / 2, CH - 17, '#ffffff', { align: 'center', baseline: 'middle' });
+  R.text('★ ' + t('hud.achievement', { name: b.text }), CW / 2, CH - 17, '#ffffff', { align: 'center', baseline: 'middle' });
   R.restore();
 }
 
 // ===== SPEED LINES =====
 export function drawSpeedLines() {
   const { speedBoost, player, gameTime } = world;
-  if (speedBoost < 1.6) return;
+  if (speedBoost < 1.6 || world.opts.reduceMotion) return;
   R.save();
   R.alpha *= Math.min(1, (speedBoost - 1.6) / 0.8) * 0.35;
   for (let i = 0; i < 10; i++) {

@@ -2,7 +2,7 @@ import { CH } from './constants';
 import { audio } from './audio';
 import { world, STATE } from './game/world';
 import { moveToLane, laneAtY } from './game/player';
-import { togglePause, pauseIfPlaying } from './ui';
+import { togglePause, pauseIfPlaying, handleEscape } from './ui';
 
 // Keyboard: ↑/Space and ↓ step one lane. Touch/mouse: press anywhere and the
 // player jumps straight to the lane nearest to the pointer's Y.
@@ -16,10 +16,8 @@ export function bindInput(canvas: HTMLCanvasElement) {
       if (e.key === 'ArrowUp' || e.key === ' ') { moveToLane(world.player.targetLane + 1); e.preventDefault(); }
       if (e.key === 'ArrowDown') { moveToLane(world.player.targetLane - 1); e.preventDefault(); }
     }
-    if (e.key === 'Escape' || e.key === 'p' || e.key === 'P') {
-      togglePause();
-      e.preventDefault();
-    }
+    if (e.key === 'Escape') { handleEscape(); e.preventDefault(); }
+    if ((e.key === 'p' || e.key === 'P') && !(e.target instanceof HTMLInputElement)) togglePause();
   });
   window.addEventListener('keyup', e => { held.delete(e.key); });
   window.addEventListener('blur', () => held.clear());

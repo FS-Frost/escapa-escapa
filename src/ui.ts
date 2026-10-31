@@ -1,11 +1,14 @@
 import { audio } from './audio';
+import { haptics } from './haptics';
 import { storage } from './storage';
-import { world, STATE, type State } from './game/world';
+import { t, setLang, LANGS, type Key, type Lang } from './i18n';
+import { world, displayName, STATE, type State } from './game/world';
 import { startGame } from './game/logic';
 
-// DOM overlays (menus, pause, results). Gameplay is all on the canvas.
+// DOM overlays (menus, pause, options, results). Gameplay is all on the canvas.
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
+const show = (id: string, visible: boolean) => $(id).classList.toggle('hidden', !visible);
 
 const OVERLAYS: [string, State][] = [
   ['overlay-menu', STATE.MENU],
@@ -17,8 +20,10 @@ const OVERLAYS: [string, State][] = [
 
 export function setState(s: State) {
   world.state = s;
-  for (const [id, st] of OVERLAYS) $(id).classList.toggle('hidden', s !== st);
+  for (const [id, st] of OVERLAYS) show(id, s === st);
   $('game-wrapper').classList.toggle('playing', s === STATE.PLAYING);
+  hideConfirm();
+  if (s === STATE.PLAYING) closeOptions();
 }
 
 export function togglePause() {
@@ -30,6 +35,53 @@ export function pauseIfPlaying() {
   if (world.state === STATE.PLAYING) setState(STATE.PAUSED);
 }
 
+// Escape backs out of the innermost layer: options → confirm → pause toggle.
+export function handleEscape() {
+  if (isOptionsOpen()) closeOptions();
+  else if (!$('pause-confirm').classList.contains('hidden')) hideConfirm();
+  else togglePause();
+}
+
+// ===== OPTIONS PANEL =====
+const isOptionsOpen = () => !$('overlay-options').classList.contains('hidden');
+function openOptions() { syncFullscreenLabel(); show('overlay-options', true); }
+function closeOptions() { show('overlay-options', false); }
+
+const fullscreenSupported = () => !!document.fullscreenEnabled;
+
+function syncFullscreenLabel() {
+  $('btn-fullscreen').textContent = t(document.fullscreenElement ? 'opts.exitFullscreen' : 'opts.fullscreen');
+}
+
+async function toggleFullscreen() {
+  try {
+    if (document.fullscreenElement) {
+      await document.exitFullscreen();
+    } else {
+      await document.documentElement.requestFullscreen({ navigationUI: 'hide' });
+      // Android lets fullscreen pages lock orientation; ignore where unsupported.
+      const orientation = screen.orientation as ScreenOrientation & { lock?: (o: string) => Promise<void> };
+      await orientation.lock?.('landscape').catch(() => {});
+    }
+  } catch { /* denied or unsupported */ }
+}
+
+// ===== PAUSE CONFIRMATION =====
+let pendingAction: (() => void) | null = null;
+
+function askConfirm(textKey: Key, action: () => void) {
+  pendingAction = action;
+  $('pause-confirm-text').textContent = t(textKey);
+  show('pause-main', false);
+  show('pause-confirm', true);
+}
+
+function hideConfirm() {
+  pendingAction = null;
+  show('pause-main', true);
+  show('pause-confirm', false);
+}
+
 // ===== SCREEN OVERLAYS =====
 function el(tag: string, cls: string, text: string | number) {
   const e = document.createElement(tag);
@@ -39,33 +91,35 @@ function el(tag: string, cls: string, text: string | number) {
 }
 
 function renderStats(target: HTMLElement) {
-  const rows: [string, string | number][] = [
-    ['Puntuación', world.score],
-    ['Máx. racha', world.runStats.maxStreak ?? 0],
-    ['Multiplicador', 'x' + (world.runStats.maxMult ?? 1)],
-    ['Tiempo', Math.floor(world.gameTime) + 's'],
-    ['Mundos', world.currentBiome + 1],
-    ['Récord diario', storage.getDailyBest()],
+  const rows: [Key, string | number][] = [
+    ['stats.score', world.score],
+    ['stats.maxStreak', world.runStats.maxStreak ?? 0],
+    ['stats.mult', 'x' + (world.runStats.maxMult ?? 1)],
+    ['stats.time', Math.floor(world.gameTime) + 's'],
+    ['stats.worlds', world.currentBiome + 1],
+    ['stats.daily', storage.getDailyBest()],
   ];
   target.replaceChildren(...rows.map(([k, v]) => {
     const row = el('div', 'stat-row', '');
-    row.append(el('span', 'stat-label', k), el('span', 'stat-value', v));
+    row.append(el('span', 'stat-label', t(k)), el('span', 'stat-value', v));
     return row;
   }));
 }
 
 function saveRun() {
   storage.saveDailyBest(world.score);
-  storage.saveScore(world.playerName, world.score, world.runStats);
+  storage.saveScore(displayName(), world.score, world.runStats);
 }
 
 export function showDeadScreen() {
   saveRun();
+  $('dead-title').textContent = t('dead.title', { name: displayName() });
   renderStats($('dead-stats'));
 }
 
 export function showVictoryScreen() {
   saveRun();
+  $('victory-title').textContent = t('victory.title', { name: displayName() });
   renderStats($('victory-stats'));
   setTimeout(() => {
     // The player may have restarted or left during the delay
@@ -80,7 +134,7 @@ function renderScoresList() {
   const medals = ['🥇', '🥈', '🥉'];
   const list = $('scores-list');
   if (!scores.length) {
-    list.replaceChildren(el('p', 'scores-empty', 'Sin récords aún'));
+    list.replaceChildren(el('p', 'scores-empty', t('records.empty')));
     return;
   }
   list.replaceChildren(...scores.map((s, i) => {
@@ -88,59 +142,90 @@ function renderScoresList() {
     row.append(
       el('span', 'score-rank', medals[i] ?? i + 1),
       el('span', 'score-name', s.name),
-      el('span', 'score-pts', `${s.score}pts`),
+      el('span', 'score-pts', t('records.pts', { n: s.score })),
     );
     return row;
   }));
 }
 
 // ===== BINDINGS =====
+const click = (id: string, fn: () => void) => $(id).addEventListener('click', fn);
+
 export function bindUI() {
+  const { opts } = world;
+  audio.bind(opts);
+  haptics.bind(opts);
+  const saveOpts = () => storage.saveOptions(opts);
+
   const nameInput = $<HTMLInputElement>('menu-name-input');
-  nameInput.value = storage.getPlayerName();
+  nameInput.value = world.playerName;
   nameInput.addEventListener('input', () => {
-    world.playerName = nameInput.value.trim() || 'Jugador';
-    storage.savePlayerName(nameInput.value.trim());
+    world.playerName = nameInput.value.trim();
+    storage.savePlayerName(world.playerName);
   });
   nameInput.addEventListener('keydown', e => {
     if (e.key === 'Enter') $('btn-start').click();
   });
 
   const toMenu = () => setState(STATE.MENU);
-  $('btn-start').addEventListener('click', () => {
+  click('btn-start', () => {
     audio.init();
-    world.playerName = nameInput.value.trim() || 'Jugador';
-    storage.savePlayerName(world.playerName);
     nameInput.blur();
     startGame();
   });
-  $('btn-hiscores-menu').addEventListener('click', () => {
+  click('btn-hiscores-menu', () => {
     audio.init();
     renderScoresList();
     setState(STATE.HISCORE);
   });
+  click('btn-options-menu', () => { audio.init(); openOptions(); });
 
-  $('btn-resume').addEventListener('click', togglePause);
-  $('btn-restart-pause').addEventListener('click', startGame);
-  $('btn-menu-pause').addEventListener('click', toMenu);
-  $('btn-restart-dead').addEventListener('click', startGame);
-  $('btn-menu-dead').addEventListener('click', toMenu);
-  $('btn-restart-victory').addEventListener('click', startGame);
-  $('btn-menu-victory').addEventListener('click', toMenu);
-  $('btn-close-hiscores').addEventListener('click', toMenu);
-  $('pause-btn').addEventListener('click', () => { audio.init(); togglePause(); });
+  // Pause: destructive actions ask first
+  click('btn-resume', togglePause);
+  click('btn-restart-pause', () => askConfirm('pause.confirmRestart', startGame));
+  click('btn-menu-pause', () => askConfirm('pause.confirmMenu', toMenu));
+  click('btn-options-pause', openOptions);
+  click('btn-confirm-yes', () => { const a = pendingAction; hideConfirm(); a?.(); });
+  click('btn-confirm-no', hideConfirm);
 
-  const { opts } = world;
-  audio.bind(opts);
+  click('btn-restart-dead', startGame);
+  click('btn-menu-dead', toMenu);
+  click('btn-restart-victory', startGame);
+  click('btn-menu-victory', toMenu);
+  click('btn-close-hiscores', toMenu);
+  click('pause-btn', () => { audio.init(); togglePause(); });
+
+  // Options
+  const lang = $<HTMLSelectElement>('sel-lang');
+  lang.replaceChildren(...Object.entries(LANGS).map(([code, label]) => new Option(label, code)));
+  lang.value = opts.lang;
+  lang.addEventListener('change', () => {
+    opts.lang = lang.value as Lang;
+    setLang(opts.lang);
+    syncFullscreenLabel();
+    saveOpts();
+  });
+
   const vol = $<HTMLInputElement>('vol-slider');
   vol.value = String(opts.volume);
-  vol.addEventListener('input', () => { audio.setVolume(parseInt(vol.value, 10)); storage.saveOptions(opts); });
+  vol.addEventListener('input', () => { audio.setVolume(parseInt(vol.value, 10)); saveOpts(); });
 
-  const mute = $<HTMLInputElement>('chk-mute');
-  mute.checked = opts.mute;
-  mute.addEventListener('change', () => { audio.setMute(mute.checked); storage.saveOptions(opts); });
+  const toggle = (id: string, get: () => boolean, set: (v: boolean) => void) => {
+    const chk = $<HTMLInputElement>(id);
+    chk.checked = get();
+    chk.addEventListener('change', () => { set(chk.checked); saveOpts(); });
+  };
+  toggle('chk-mute', () => opts.mute, v => audio.setMute(v));
+  toggle('chk-radar', () => opts.showRadar, v => { opts.showRadar = v; });
+  toggle('chk-reduce-motion', () => opts.reduceMotion, v => { opts.reduceMotion = v; });
+  toggle('chk-vibration', () => opts.vibration, v => {
+    opts.vibration = v;
+    if (v) haptics.play('powerup'); // preview
+  });
+  show('row-vibration', haptics.supported);
 
-  const radar = $<HTMLInputElement>('chk-radar');
-  radar.checked = opts.showRadar;
-  radar.addEventListener('change', () => { opts.showRadar = radar.checked; storage.saveOptions(opts); });
+  show('btn-fullscreen', fullscreenSupported());
+  click('btn-fullscreen', () => void toggleFullscreen());
+  document.addEventListener('fullscreenchange', syncFullscreenLabel);
+  click('btn-close-options', closeOptions);
 }

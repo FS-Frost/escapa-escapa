@@ -1,5 +1,6 @@
 import { LANE_Y, LANE_COUNT, LANE_GAP, LANE_ANIM_DUR, LANE_ARC } from '../constants';
 import { audio } from '../audio';
+import { haptics } from '../haptics';
 import { world, STATE } from './world';
 import { spawnLaneTrailArc } from './particles';
 
@@ -69,6 +70,7 @@ export function moveToLane(lane: number) {
   p.jumpDur = LANE_ANIM_DUR * Math.sqrt(span);
   p.jumpArc = LANE_ARC * Math.sqrt(span);
   audio.play('jump');
+  haptics.play('jump');
 }
 
 export function updatePlayerMotion(dt: number) {

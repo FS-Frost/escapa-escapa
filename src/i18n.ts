@@ -1,0 +1,152 @@
+// UI strings for every language. Canvas text and DOM ([data-i18n*]) both read
+// from here. Add a language by adding a dictionary with the same keys.
+
+export type Lang = 'es' | 'en';
+export const LANGS: Record<Lang, string> = { es: 'Español', en: 'English' };
+
+const es = {
+  defaultName: 'Jugador',
+  'menu.subtitle': '¡Llega a la meta!',
+  'menu.nameLabel': 'Tu nombre:',
+  'menu.play': '▶ JUGAR',
+  'menu.records': '🏆 RÉCORDS',
+  'menu.options': '⚙ OPCIONES',
+  'controls.title': 'Controles',
+  'controls.tap': 'Toca un carril = saltar ahí',
+  'controls.keys': '⬆ / ESPACIO / ⬇ = cambiar carril',
+  'controls.pause': 'P / ESC = pausa',
+  'pause.title': '⏸ PAUSA',
+  'pause.aria': 'Pausa',
+  'pause.resume': '▶ CONTINUAR',
+  'pause.restart': '↺ REINICIAR',
+  'pause.menu': '⬅ MENÚ',
+  'pause.confirmRestart': '¿Reiniciar? Perderás esta partida.',
+  'pause.confirmMenu': '¿Volver al menú? Perderás esta partida.',
+  'common.yes': 'SÍ',
+  'common.no': 'NO',
+  'opts.title': '⚙ OPCIONES',
+  'opts.language': 'Idioma',
+  'opts.volume': 'Volumen',
+  'opts.mute': 'Silencio',
+  'opts.vibration': 'Vibración',
+  'opts.radar': 'Mostrar radar',
+  'opts.reduceMotion': 'Reducir movimiento',
+  'opts.fullscreen': '⛶ PANTALLA COMPLETA',
+  'opts.exitFullscreen': '⛶ SALIR DE PANTALLA COMPLETA',
+  'opts.back': '⬅ VOLVER',
+  'dead.title': '💀 ¡{name} cayó!',
+  'dead.retry': '↺ REINTENTAR',
+  'victory.title': '🎉 ¡{name} escapó!',
+  'victory.again': '▶ JUGAR DE NUEVO',
+  'records.title': '🏆 RÉCORDS',
+  'records.empty': 'Sin récords aún',
+  'records.close': 'CERRAR',
+  'records.pts': '{n} pts',
+  'stats.score': 'Puntuación',
+  'stats.maxStreak': 'Máx. racha',
+  'stats.mult': 'Multiplicador',
+  'stats.time': 'Tiempo',
+  'stats.worlds': 'Mundos',
+  'stats.daily': 'Récord diario',
+  'hud.streak': 'RACHA {n}',
+  'hud.goal': '¡LA META SE ACERCA!',
+  'hud.newRecord': '¡NUEVO RÉCORD!',
+  'hud.achievement': 'LOGRO: {name}',
+  'combo.2': '¡COMBO x2!',
+  'combo.3': '¡COMBO x3!',
+  'combo.4': '¡INTOCABLE!',
+  'ach.first_escape': '¡Primera escapada!',
+  'ach.untouchable_10': 'Intocable x10',
+  'ach.max_combo': 'Combo máximo',
+  'ach.speed_demon': 'Demonio de velocidad',
+  'ach.comeback': 'Regreso épico',
+  'rotate': 'Gira el teléfono para jugar',
+  'noWebgl.title': '😿 Sin WebGL2',
+  'noWebgl.body': 'Tu navegador no soporta WebGL2. Actualízalo o prueba con Chrome, Safari o Firefox recientes.',
+};
+
+export type Key = keyof typeof es;
+
+const en: Record<Key, string> = {
+  defaultName: 'Player',
+  'menu.subtitle': 'Reach the goal!',
+  'menu.nameLabel': 'Your name:',
+  'menu.play': '▶ PLAY',
+  'menu.records': '🏆 HIGH SCORES',
+  'menu.options': '⚙ OPTIONS',
+  'controls.title': 'Controls',
+  'controls.tap': 'Tap a lane = jump there',
+  'controls.keys': '⬆ / SPACE / ⬇ = change lane',
+  'controls.pause': 'P / ESC = pause',
+  'pause.title': '⏸ PAUSED',
+  'pause.aria': 'Pause',
+  'pause.resume': '▶ RESUME',
+  'pause.restart': '↺ RESTART',
+  'pause.menu': '⬅ MENU',
+  'pause.confirmRestart': 'Restart? You will lose this run.',
+  'pause.confirmMenu': 'Back to menu? You will lose this run.',
+  'common.yes': 'YES',
+  'common.no': 'NO',
+  'opts.title': '⚙ OPTIONS',
+  'opts.language': 'Language',
+  'opts.volume': 'Volume',
+  'opts.mute': 'Mute',
+  'opts.vibration': 'Vibration',
+  'opts.radar': 'Show radar',
+  'opts.reduceMotion': 'Reduce motion',
+  'opts.fullscreen': '⛶ FULLSCREEN',
+  'opts.exitFullscreen': '⛶ EXIT FULLSCREEN',
+  'opts.back': '⬅ BACK',
+  'dead.title': '💀 {name} fell!',
+  'dead.retry': '↺ RETRY',
+  'victory.title': '🎉 {name} escaped!',
+  'victory.again': '▶ PLAY AGAIN',
+  'records.title': '🏆 HIGH SCORES',
+  'records.empty': 'No records yet',
+  'records.close': 'CLOSE',
+  'records.pts': '{n} pts',
+  'stats.score': 'Score',
+  'stats.maxStreak': 'Best streak',
+  'stats.mult': 'Multiplier',
+  'stats.time': 'Time',
+  'stats.worlds': 'Worlds',
+  'stats.daily': 'Daily best',
+  'hud.streak': 'STREAK {n}',
+  'hud.goal': 'GOAL INCOMING!',
+  'hud.newRecord': 'NEW RECORD!',
+  'hud.achievement': 'ACHIEVEMENT: {name}',
+  'combo.2': 'x2 COMBO!',
+  'combo.3': 'x3 COMBO!',
+  'combo.4': 'UNTOUCHABLE!',
+  'ach.first_escape': 'First escape!',
+  'ach.untouchable_10': 'Untouchable x10',
+  'ach.max_combo': 'Max combo',
+  'ach.speed_demon': 'Speed demon',
+  'ach.comeback': 'Epic comeback',
+  'rotate': 'Rotate your phone to play',
+  'noWebgl.title': '😿 No WebGL2',
+  'noWebgl.body': 'Your browser does not support WebGL2. Update it or try a recent Chrome, Safari or Firefox.',
+};
+
+const DICTS: Record<Lang, Record<Key, string>> = { es, en };
+let lang: Lang = 'es';
+
+export function detectLang(): Lang {
+  return (navigator.language || 'es').toLowerCase().startsWith('es') ? 'es' : 'en';
+}
+
+export function setLang(l: Lang) {
+  lang = l;
+  applyDomI18n();
+}
+
+export function t(key: Key, vars: Record<string, string | number> = {}): string {
+  return DICTS[lang][key].replace(/\{(\w+)\}/g, (_, k: string) => String(vars[k] ?? ''));
+}
+
+export function applyDomI18n() {
+  document.documentElement.lang = lang;
+  for (const el of document.querySelectorAll<HTMLElement>('[data-i18n]')) el.textContent = t(el.dataset.i18n as Key);
+  for (const el of document.querySelectorAll<HTMLInputElement>('[data-i18n-placeholder]')) el.placeholder = t(el.dataset.i18nPlaceholder as Key);
+  for (const el of document.querySelectorAll<HTMLElement>('[data-i18n-aria]')) el.setAttribute('aria-label', t(el.dataset.i18nAria as Key));
+}

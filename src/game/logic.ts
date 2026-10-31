@@ -1,6 +1,8 @@
 import { BASE_SPEED, GOAL_SCORE, GOAL_TRAVEL_TIME } from '../constants';
 import { R } from '../gfx/renderer';
 import { audio } from '../audio';
+import { haptics } from '../haptics';
+import { t } from '../i18n';
 import { storage } from '../storage';
 import { world, STATE } from './world';
 import { createPlayer, updatePlayerMotion } from './player';
@@ -27,6 +29,7 @@ function onObstacleAvoided(obs: Obstacle) {
     p.comboMultiplier = newMult;
     showComboPopup(newMult);
     audio.play('combo');
+    haptics.play('combo');
   }
   if (p.comboStreak === 10) achievementsCheck('untouchable_10');
   if (p.comboMultiplier === 4) achievementsCheck('max_combo');
@@ -42,19 +45,14 @@ function onObstacleAvoided(obs: Obstacle) {
 }
 
 // ===== ACHIEVEMENTS =====
-const ACHIEVEMENT_DEFS: Record<string, { name: string }> = {
-  first_escape: { name: '¡Primera escapada!' },
-  untouchable_10: { name: 'Intocable x10' },
-  max_combo: { name: 'Combo máximo' },
-  speed_demon: { name: 'Demonio de velocidad' },
-  comeback: { name: 'Regreso épico' },
-};
+// Names live in i18n under `ach.<id>`.
+type AchievementId = 'first_escape' | 'untouchable_10' | 'max_combo' | 'speed_demon' | 'comeback';
 
-function achievementsCheck(id: keyof typeof ACHIEVEMENT_DEFS) {
+function achievementsCheck(id: AchievementId) {
   if (!storage.unlockAchievement(id)) return;
-  const def = ACHIEVEMENT_DEFS[id];
-  world.achievementBanner = { text: def.name, life: 2.5, maxLife: 2.5 };
+  world.achievementBanner = { text: t(`ach.${id}`), life: 2.5, maxLife: 2.5 };
   audio.play('achievement');
+  haptics.play('achievement');
 }
 
 // ===== GAME LOGIC =====
@@ -75,18 +73,21 @@ function hitPlayer() {
   p.comboMultiplier = 1;
   world.shakeDur = 0.25;
   audio.play('hit');
+  haptics.play('hit');
   spawnHitStars(p.x, p.y);
   if (p.hp <= 0) triggerDeath();
 }
 
 function triggerDeath() {
   audio.play('death');
+  haptics.play('death');
   setState(STATE.DEAD);
   showDeadScreen();
 }
 
 function triggerVictory() {
   audio.play('victory');
+  haptics.play('victory');
   setState(STATE.VICTORY);
   achievementsCheck('first_escape');
   const p = world.player;
@@ -124,6 +125,7 @@ function checkCollisions() {
           p.hp = Math.min(2, p.hp + 1);
           p.maxHp = Math.max(p.maxHp, 2);
           audio.play('powerup');
+          haptics.play('powerup');
           spawnSparkles(obs.x, obs.y, 12);
         }
         obs.active = false;
@@ -206,8 +208,8 @@ export function update(dt: number) {
     }
   }
 
-  if (w.shakeDur > 0) {
-    w.shakeDur -= dt;
+  if (w.shakeDur > 0) w.shakeDur -= dt;
+  if (w.shakeDur > 0 && !w.opts.reduceMotion) {
     w.shakeX = (Math.random() - 0.5) * 6;
     w.shakeY = (Math.random() - 0.5) * 6;
   } else { w.shakeX = 0; w.shakeY = 0; }
@@ -255,7 +257,7 @@ export function render() {
 
   if (w.state === STATE.PLAYING || w.state === STATE.PAUSED) {
     for (const o of w.obstacles) if (o.lane < p.targetLane) drawObstacle(o);
-    const flash = p.hitFlash > 0 && Math.floor(p.hitFlash * 12) % 2 === 0;
+    const flash = p.hitFlash > 0 && !w.opts.reduceMotion && Math.floor(p.hitFlash * 12) % 2 === 0;
     drawPlayer(p.x, p.y, p.expression, flash, p.maxHp > 1);
     for (const o of w.obstacles) if (o.lane >= p.targetLane) drawObstacle(o);
   }

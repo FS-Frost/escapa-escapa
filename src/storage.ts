@@ -1,7 +1,16 @@
 // All localStorage access goes through here. Keys are kept from v1 so existing
 // records, achievements and options survive the migration.
 
-export interface Options { volume: number; showRadar: boolean; mute: boolean; }
+import { detectLang, type Lang } from './i18n';
+
+export interface Options {
+  volume: number;
+  showRadar: boolean;
+  mute: boolean;
+  lang: Lang;
+  vibration: boolean;
+  reduceMotion: boolean;
+}
 export interface RunStats { maxStreak?: number; maxMult?: number; }
 export interface ScoreEntry { name: string; score: number; stats: RunStats; date: number; }
 
@@ -35,7 +44,14 @@ export const storage = {
     if (a[id]) return false;
     a[id] = Date.now(); save(KA, a); return true;
   },
-  getOptions: (): Options => ({ volume: 70, showRadar: true, mute: false, ...load<Partial<Options>>(KO, {}) }),
+  // v1 saved only { volume, showRadar, mute }; newer fields fall back to defaults.
+  getOptions: (): Options => ({
+    volume: 70, showRadar: true, mute: false,
+    lang: detectLang(),
+    vibration: true,
+    reduceMotion: matchMedia('(prefers-reduced-motion: reduce)').matches,
+    ...load<Partial<Options>>(KO, {}),
+  }),
   saveOptions(o: Options) { save(KO, o); },
   getPlayerName(): string { try { return localStorage.getItem(KN) || ''; } catch { return ''; } },
   savePlayerName(n: string) { try { localStorage.setItem(KN, n); } catch { /* storage unavailable */ } },

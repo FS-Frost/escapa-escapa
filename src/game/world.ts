@@ -4,6 +4,7 @@ import { createPlayer, type Player } from './player';
 import type { Obstacle, Goal } from './obstacles';
 import type { Particle } from './particles';
 import type { Color } from '../gfx/color';
+import { t } from '../i18n';
 
 export const STATE = { MENU: 0, PLAYING: 1, PAUSED: 2, DEAD: 3, VICTORY: 4, HISCORE: 5 } as const;
 export type State = typeof STATE[keyof typeof STATE];
@@ -38,5 +39,8 @@ export const world = {
   spawnTimer: 0,
   runStats: {} as RunStats,
   opts: storage.getOptions(),
-  playerName: storage.getPlayerName() || 'Jugador',
+  playerName: storage.getPlayerName(), // raw input; may be empty
 };
+
+// Name shown in HUD, titles and records; falls back to the localized default.
+export const displayName = () => world.playerName || t('defaultName');

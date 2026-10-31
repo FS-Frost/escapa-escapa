@@ -5,6 +5,7 @@ import { world, STATE } from './game/world';
 import { update, render } from './game/logic';
 import { bindUI, setState } from './ui';
 import { bindInput } from './input';
+import { setLang } from './i18n';
 
 const canvas = document.getElementById('game') as HTMLCanvasElement;
 const wrapper = document.getElementById('game-wrapper')!;
@@ -25,6 +26,7 @@ function layout(r: Renderer) {
 }
 
 function boot() {
+  setLang(world.opts.lang);
   let r: Renderer;
   try {
     r = initRenderer(canvas);
