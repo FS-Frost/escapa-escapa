@@ -3,6 +3,7 @@ import { storage, type RunStats } from '../storage';
 import { createPlayer, type Player } from './player';
 import type { Obstacle, Goal } from './obstacles';
 import type { Particle } from './particles';
+import type { Tutorial } from './tutorial';
 import type { Color } from '../gfx/color';
 import { t } from '../i18n';
 
@@ -27,7 +28,8 @@ export const world = {
   goal: null as Goal | null,
   goalSpawned: false,
   goalApproaching: false,
-  goalAlarmTimer: 0,
+  goalTimer: 0,          // seconds since the goal appeared
+  goalCountdown: 0,      // last 3-2-1 beep played
   speedBoost: 1,
   shakeX: 0,
   shakeY: 0,
@@ -38,6 +40,9 @@ export const world = {
   currentBiome: 0,
   particles: [] as Particle[],
   laneFlash: null as LaneFlash | null, // highlight of the lane just chosen
+  tutorial: null as Tutorial | null,
+  // Last input kind, so prompts say "tap" or show keys.
+  inputMode: (matchMedia('(pointer: coarse)').matches ? 'touch' : 'keys') as 'touch' | 'keys',
   spawnTimer: 0,
   runStats: {} as RunStats,
   opts: storage.getOptions(),

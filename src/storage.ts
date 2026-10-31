@@ -16,7 +16,8 @@ export interface RunStats { maxStreak?: number; maxMult?: number; }
 export interface ScoreEntry { name: string; score: number; stats: RunStats; date: number; }
 
 const KH = 'player2_hiscores', KD = 'player2_daily',
-  KA = 'player2_achievements', KO = 'player2_options', KN = 'escapa_playername';
+  KA = 'player2_achievements', KO = 'player2_options', KN = 'escapa_playername',
+  KT = 'escapa_tutorial_seen';
 
 function load<T>(k: string, d: T): T {
   try { return JSON.parse(localStorage.getItem(k) ?? 'null') ?? d; } catch { return d; }
@@ -59,5 +60,8 @@ export const storage = {
   },
   saveOptions(o: Options) { save(KO, o); },
   getPlayerName(): string { try { return localStorage.getItem(KN) || ''; } catch { return ''; } },
+  // Set once the tutorial was offered and accepted, skipped or finished.
+  getTutorialSeen(): boolean { try { return localStorage.getItem(KT) === '1'; } catch { return true; } },
+  setTutorialSeen() { try { localStorage.setItem(KT, '1'); } catch { /* storage unavailable */ } },
   savePlayerName(n: string) { try { localStorage.setItem(KN, n); } catch { /* storage unavailable */ } },
 };

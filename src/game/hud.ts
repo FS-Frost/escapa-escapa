@@ -1,7 +1,6 @@
 import { CW, CH, RADAR_H, LANE_COUNT, LANE_GAP, LANE_Y, P, SPAWN_AHEAD } from '../constants';
 import { LANE_FLASH_DUR } from './player';
 import { R } from '../gfx/renderer';
-import { rgba } from '../gfx/color';
 import { world, displayName } from './world';
 import { t, type Key } from '../i18n';
 import type { ObsType } from './obstacles';
@@ -21,7 +20,7 @@ const RADAR_X0 = 4, RADAR_W = CW - RADAR_X0 - PAUSE_BTN_INSET;
 const radarX = (dist: number) => RADAR_X0 + Math.floor(Math.min(1, Math.max(0, dist / SPAWN_AHEAD)) * RADAR_W);
 
 export function drawRadar() {
-  if (!world.opts.showRadar) return;
+  if (!world.opts.showRadar && !world.tutorial) return; // the tutorial explains it
   const { player, obstacles, goal } = world;
 
   R.rect(0, 0, CW, RADAR_H, '#0a0a18');
@@ -64,15 +63,34 @@ export function drawHUD() {
   }
   R.text(displayName(), hx - player.maxHp * 18 - 4, RADAR_H + 9, '#aaaacc', { align: 'right' });
 
-  if (world.goalApproaching) {
-    const pulse = Math.sin(world.gameTime * 8) * 0.5 + 0.5;
-    R.text(t('hud.goal'), CW / 2, RADAR_H + 9,
-      rgba(255, Math.floor(100 + pulse * 155), 0, 0.7 + pulse * 0.3), { align: 'center' });
-  }
+  if (world.goalApproaching) drawGoalProgress();
 
   if (score >= hiScore && score > 0) {
     // Sits above the achievement banner while it is showing
     R.text(t('hud.newRecord'), CW / 2, world.achievementBanner ? CH - 38 : CH - 9, '#ffd700', { align: 'center' });
+  }
+}
+
+// ===== GOAL PROGRESS =====
+const GOAL_NOTICE_S = 2.5;
+const BAR_W = 140, BAR_X = (CW - BAR_W) / 2, BAR_Y = RADAR_H + 6;
+
+// Brief notice when the goal appears, then a quiet bar that fills up to the flag.
+function drawGoalProgress() {
+  const { goal, player, goalTimer } = world;
+  if (!goal) return;
+  const k = Math.min(1, Math.max(0, 1 - (goal.x - player.x) / goal.startDist));
+  R.rect(BAR_X, BAR_Y, BAR_W, 4, '#ffffff', 0.15);
+  R.rect(BAR_X, BAR_Y, Math.round(BAR_W * k), 4, '#ffb000');
+  // Tiny flag at the end
+  R.rect(BAR_X + BAR_W + 3, BAR_Y - 4, 1, 9, '#aaaaaa');
+  R.rect(BAR_X + BAR_W + 4, BAR_Y - 4, 5, 4, goal.flash ? '#ffd700' : '#ff6600');
+
+  if (goalTimer < GOAL_NOTICE_S) {
+    R.save();
+    R.alpha *= Math.min(1, (GOAL_NOTICE_S - goalTimer) / 0.5);
+    R.text(t('hud.goal'), CW / 2, BAR_Y + 9, '#ffb000', { align: 'center' });
+    R.restore();
   }
 }
 

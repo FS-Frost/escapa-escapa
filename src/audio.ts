@@ -141,6 +141,7 @@ function schedule() {
     for (const name of Object.keys(THEMES) as Theme[]) {
       if (name === lead || (audibleUntil[name] ?? 0) > nextStepTime) playStep(name, step, nextStepTime);
     }
+    if (lead && lead !== 'menu' && intensity > 0) rushLayer(lead, step, nextStepTime);
     const bpm = lead ? THEMES[lead].bpm * (lead === 'menu' ? 1 : 1 + intensity * 0.25) : 100;
     nextStepTime += 60 / bpm / 4;
     step = (step + 1) % (STEPS_PER_BAR * BARS);
@@ -186,6 +187,17 @@ function playStep(name: Theme, stepIdx: number, t: number) {
       if (s === 8) hat(out, t, 0.05);
       break;
   }
+}
+
+// Goal-rush tension on top of the biome theme: a snare roll that thickens
+// (8ths → 16ths) and gets louder as intensity rises.
+function rushLayer(name: Theme, stepIdx: number, t: number) {
+  const s = stepIdx % STEPS_PER_BAR;
+  const dense = intensity > 0.6;
+  if (!dense && s % 2 === 1) return;
+  // Crescendo within each bar
+  const level = (0.025 + intensity * 0.09) * (0.6 + 0.4 * (s / STEPS_PER_BAR));
+  snare(themeGains[name], t, level);
 }
 
 // ===== VOICES =====
@@ -304,7 +316,8 @@ const sounds = {
     [523, 659, 784].forEach((f, i) => tone(f, 0.5, 'sine', 0.2, 0.7 + i * 0.02));
   },
   pass() { tone(660, 0.04, 'square', 0.1); },
-  goalAlarm() { tone(880, 0.12, 'square', 0.3); tone(440, 0.12, 'square', 0.25, 0.15); },
+  goalAppear() { [659, 880, 1319].forEach((f, i) => tone(f, 0.22, 'triangle', 0.14, i * 0.09)); },
+  countdown() { tone(784, 0.09, 'sine', 0.14); },
   combo() { tone(880, 0.08, 'sine', 0.22); tone(1100, 0.08, 'sine', 0.2, 0.06); },
   nearMiss() { tone(550, 0.05, 'sine', 0.12); },
   achievement() { [784, 1047, 1319].forEach((f, i) => tone(f, 0.18, 'sine', 0.25, i * 0.08)); },

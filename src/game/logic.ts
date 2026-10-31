@@ -15,10 +15,12 @@ import {
   updateAchievementBanner, drawAchievementBanner, drawSpeedLines,
   drawLaneFlash, drawLandingGhost, drawLaneMarkers,
 } from './hud';
+import { startTutorial, updateTutorial, drawTutorial, tutorialObstaclePassed, tutorialHit } from './tutorial';
 import { setState, showDeadScreen, showVictoryScreen } from '../ui';
 
 // ===== COMBO SYSTEM =====
 function onObstacleAvoided(obs: Obstacle) {
+  if (world.tutorial) { tutorialObstaclePassed(obs); return; } // no score while learning
   const p = world.player;
   world.score += p.comboMultiplier;
   p.comboStreak++;
@@ -41,7 +43,7 @@ function onObstacleAvoided(obs: Obstacle) {
     world.goalSpawned = true;
     spawnGoal();
     world.goalApproaching = true;
-    audio.play('goalAlarm');
+    audio.play('goalAppear'); // once; the music carries the tension from here
   }
 }
 
@@ -147,6 +149,7 @@ function checkCollisions() {
     }
 
     if (rectOverlap(px, py, p.w, p.h, obs.x, obs.y - obs.h / 2, obs.w, obs.h)) {
+      if (world.tutorial) { tutorialHit(); return; }
       hitPlayer();
       obs.active = false;
     } else if (behind(obs)) {
@@ -162,8 +165,14 @@ function checkCollisions() {
 }
 
 // ===== RESET / START =====
-export function startGame() {
+export function startGame(withTutorial = false) {
   audio.init();
+  resetRun();
+  if (withTutorial) startTutorial(resetRun);
+  setState(STATE.PLAYING);
+}
+
+function resetRun() {
   Object.assign(world, {
     player: createPlayer(),
     score: 0,
@@ -175,7 +184,8 @@ export function startGame() {
     goal: null,
     goalSpawned: false,
     goalApproaching: false,
-    goalAlarmTimer: 0,
+    goalTimer: 0,
+    goalCountdown: 0,
     speedBoost: 1,
     shakeX: 0, shakeY: 0, shakeDur: 0,
     comboPopups: [],
@@ -185,9 +195,9 @@ export function startGame() {
     spawnTimer: 1.5,
     particles: [],
     laneFlash: null,
+    tutorial: null,
     runStats: { maxStreak: 0, maxMult: 1 },
   });
-  setState(STATE.PLAYING);
 }
 
 // ===== GAME LOOP =====
@@ -202,11 +212,17 @@ export function update(dt: number) {
   audio.setIntensity(w.goalApproaching ? (w.speedBoost - 1) / 1.5 : 0);
 
   if (w.goalApproaching) {
-    w.goalAlarmTimer += dt;
-    if (w.goalAlarmTimer > 3.0 && Math.floor(w.goalAlarmTimer) !== Math.floor(w.goalAlarmTimer - dt)) {
-      audio.play('goalAlarm');
+    w.goalTimer += dt;
+    // Soft 3-2-1 beeps right before arrival
+    if (w.goal?.active) {
+      const eta = (w.goal.x - (p.x + p.w / 2 + 10)) / (w.scrollSpeed * w.speedBoost);
+      const sec = Math.ceil(eta);
+      if (sec >= 1 && sec <= 3 && sec !== w.goalCountdown) {
+        w.goalCountdown = sec;
+        audio.play('countdown');
+      }
     }
-    w.speedBoost = Math.min(2.5, 1.0 + (w.goalAlarmTimer / GOAL_TRAVEL_TIME) * 1.5);
+    w.speedBoost = Math.min(2.5, 1.0 + (w.goalTimer / GOAL_TRAVEL_TIME) * 1.5);
     if (w.speedBoost >= 2.4) {
       p.speedDemonTimer += dt;
       if (p.speedDemonTimer >= 10) achievementsCheck('speed_demon');
@@ -245,7 +261,8 @@ export function update(dt: number) {
   w.obstacles = w.obstacles.filter(o => o.active);
   if (w.goal) updateGoal(w.goal, dt, spd);
 
-  updateSpawner(dt);
+  if (w.tutorial) updateTutorial(dt);
+  else updateSpawner(dt);
   checkCollisions();
   updateComboPopups(dt);
   updateAchievementBanner(dt);
@@ -274,6 +291,7 @@ export function render() {
   drawSpeedLines();
   drawParticles();
   if (inRun) drawLaneMarkers();
+  if (inRun) drawTutorial();
   drawComboPopups();
   drawAchievementBanner();
   drawHUD();

@@ -47,6 +47,7 @@ function boot() {
     const dt = Math.max(0, Math.min((ts - last) / 1000, 0.05));
     last = ts;
     if (world.state === STATE.PLAYING) update(dt);
+    wrapper.classList.toggle('tutorial', !!world.tutorial); // shows the skip button
     if (!r.lost) render();
     requestAnimationFrame(loop);
   };

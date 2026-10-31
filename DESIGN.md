@@ -130,8 +130,29 @@ AABB with an 18% inset on the player rect for forgiving feel. Pits collide only 
 
 1. At `score ≥ 100`, `spawnGoal()` places the goal `scrollSpeed · speedBoost · 30 s` ahead.
 2. `speedBoost` ramps toward 2.5× over 30 s, so the goal arrives a bit sooner than 30 s.
-3. An alarm plays every second after 3 s; speed lines appear above 1.6× and a trail above 1.5×.
-4. When the goal reaches the player, `triggerVictory()` fires.
+3. The cue is deliberately quiet:
+   - a single `goalAppear` chime when the goal spawns;
+   - "¡LA META SE ACERCA!" shows for 2.5 s and fades, leaving a thin progress bar (filled by `1 − (goal.x − player.x) / startDist`) with a small flag under the radar;
+   - the music speeds up (up to +25%) and a snare roll grows on top of it (`rushLayer`: 8ths, then 16ths above 60% intensity);
+   - soft `countdown` beeps at 3, 2 and 1 seconds from arrival (ETA = distance / current speed).
+4. Speed lines appear above 1.6× and a trail above 1.5×.
+5. When the goal reaches the player, `triggerVictory()` fires.
+
+---
+
+## Tutorial
+
+Offered once (the first time JUGAR is pressed, stored in `escapa_tutorial_seen`) and replayable from Options when opened from the main menu. It runs inside a normal PLAYING run with `world.tutorial` set: the spawner is off, avoided obstacles give no score and hits cost no HP. A "Skip tutorial" button is shown while it runs.
+
+| Step | Prompt | Advances when |
+|------|--------|---------------|
+| up | Tap the top lane (or ↑) | Player lands on lane 2 |
+| down | Tap the bottom: you jump straight there (or ↓) | Player lands on lane 0 |
+| radar | The radar shows what is coming (arrows point at it; decoys appear) | Any tap/key after 1.2 s; the input doesn't move the player |
+| dodge | Dodge the zombie | The practice zombie (spawned on the player's lane) passes; on a hit it respawns after a "try again" message |
+| done | Done! Now, escape | 1.8 s later the run resets and the real game starts |
+
+Prompts adapt to the last input kind (`world.inputMode`: touch or keys). Lane steps pulse the target tap zone and, for touch, show a tap ripple.
 
 ---
 
@@ -214,7 +235,8 @@ Each SFX schedules `Oscillator → Gain → sfxGain` with an exponential decay.
 | death | sawtooth, 4 notes | Descending fall |
 | victory | sine, 6 notes + chord | Fanfare |
 | pass | square | Tiny blip |
-| goalAlarm | square, two-tone | Alert |
+| goalAppear | triangle, 3 notes | Soft rising chime, once |
+| countdown | sine | Soft beep at 3-2-1 s before the goal |
 | combo | sine, two-tone | Shine |
 | nearMiss | sine | Subtle blip |
 | achievement | sine, 3 notes | Unlock jingle |
@@ -254,6 +276,7 @@ Pause also offers resume, restart and back-to-menu (both destructive actions ask
 | Key | Contents |
 |-----|----------|
 | `escapa_playername` | Raw entered name |
+| `escapa_tutorial_seen` | `'1'` once the tutorial was offered |
 | `player2_hiscores` | Top 5 `{ name, score, stats, date }`, sorted desc |
 | `player2_daily` | `{ "YYYY-MM-DD": bestScore }` (UTC date) |
 | `player2_achievements` | `{ achievementId: timestamp }` |

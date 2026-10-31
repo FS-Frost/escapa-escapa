@@ -4,6 +4,7 @@ import { storage } from './storage';
 import { t, setLang, LANGS, type Key, type Lang } from './i18n';
 import { world, displayName, STATE, type State } from './game/world';
 import { startGame } from './game/logic';
+import { endTutorial } from './game/tutorial';
 import { biomeTheme } from './game/biomes';
 
 // DOM overlays (menus, pause, options, results). Gameplay is all on the canvas.
@@ -45,16 +46,21 @@ export function pauseIfPlaying() {
   if (world.state === STATE.PLAYING) setState(STATE.PAUSED);
 }
 
-// Escape backs out of the innermost layer: options → confirm → pause toggle.
+// Escape backs out of the innermost layer: tutorial offer / options → confirm → pause toggle.
 export function handleEscape() {
-  if (isOptionsOpen()) closeOptions();
+  if (!$('overlay-tutorial-offer').classList.contains('hidden')) show('overlay-tutorial-offer', false);
+  else if (isOptionsOpen()) closeOptions();
   else if (!$('pause-confirm').classList.contains('hidden')) hideConfirm();
   else togglePause();
 }
 
 // ===== OPTIONS PANEL =====
 const isOptionsOpen = () => !$('overlay-options').classList.contains('hidden');
-function openOptions() { syncFullscreenLabel(); show('overlay-options', true); }
+function openOptions() {
+  syncFullscreenLabel();
+  show('btn-tutorial', world.state === STATE.MENU); // from pause it would throw away the run
+  show('overlay-options', true);
+}
 function closeOptions() { show('overlay-options', false); }
 
 const fullscreenSupported = () => !!document.fullscreenEnabled;
@@ -178,11 +184,23 @@ export function bindUI() {
   });
 
   const toMenu = () => setState(STATE.MENU);
+  const play = () => startGame();
   click('btn-start', () => {
     audio.init();
     nameInput.blur();
-    startGame();
+    // First time only: offer the tutorial before the first run
+    if (storage.getTutorialSeen()) play();
+    else show('overlay-tutorial-offer', true);
   });
+  const answerOffer = (withTutorial: boolean) => {
+    storage.setTutorialSeen();
+    show('overlay-tutorial-offer', false);
+    startGame(withTutorial);
+  };
+  click('btn-tutorial-yes', () => answerOffer(true));
+  click('btn-tutorial-no', () => answerOffer(false));
+  click('btn-tutorial', () => { closeOptions(); startGame(true); });
+  click('tutorial-skip', endTutorial);
   click('btn-hiscores-menu', () => {
     audio.init();
     renderScoresList();
@@ -192,15 +210,15 @@ export function bindUI() {
 
   // Pause: destructive actions ask first
   click('btn-resume', togglePause);
-  click('btn-restart-pause', () => askConfirm('pause.confirmRestart', startGame));
+  click('btn-restart-pause', () => askConfirm('pause.confirmRestart', play));
   click('btn-menu-pause', () => askConfirm('pause.confirmMenu', toMenu));
   click('btn-options-pause', openOptions);
   click('btn-confirm-yes', () => { const a = pendingAction; hideConfirm(); a?.(); });
   click('btn-confirm-no', hideConfirm);
 
-  click('btn-restart-dead', startGame);
+  click('btn-restart-dead', play);
   click('btn-menu-dead', toMenu);
-  click('btn-restart-victory', startGame);
+  click('btn-restart-victory', play);
   click('btn-menu-victory', toMenu);
   click('btn-close-hiscores', toMenu);
   click('pause-btn', () => { audio.init(); togglePause(); });

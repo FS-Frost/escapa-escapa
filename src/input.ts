@@ -2,6 +2,7 @@ import { CH } from './constants';
 import { audio } from './audio';
 import { world, STATE } from './game/world';
 import { moveToLane, laneAtY } from './game/player';
+import { tutorialConsumesInput } from './game/tutorial';
 import { togglePause, pauseIfPlaying, handleEscape } from './ui';
 
 // Keyboard: ↑/Space and ↓ step one lane. Touch/mouse: press anywhere and the
@@ -12,6 +13,9 @@ export function bindInput(canvas: HTMLCanvasElement) {
   window.addEventListener('keydown', e => {
     if (held.has(e.key)) return;
     held.add(e.key);
+    const gameKey = ['ArrowUp', 'ArrowDown', ' ', 'Enter'].includes(e.key);
+    if (gameKey) world.inputMode = 'keys';
+    if (world.state === STATE.PLAYING && gameKey && tutorialConsumesInput()) { e.preventDefault(); return; }
     if (world.state === STATE.PLAYING) {
       if (e.key === 'ArrowUp' || e.key === ' ') { moveToLane(world.player.targetLane + 1); e.preventDefault(); }
       if (e.key === 'ArrowDown') { moveToLane(world.player.targetLane - 1); e.preventDefault(); }
@@ -27,6 +31,8 @@ export function bindInput(canvas: HTMLCanvasElement) {
     if (world.state !== STATE.PLAYING) return;
     if ((e.target as Element).closest('button, input, .overlay')) return;
     e.preventDefault();
+    world.inputMode = 'touch';
+    if (tutorialConsumesInput()) return;
     const rect = canvas.getBoundingClientRect();
     const y = (e.clientY - rect.top) / rect.height * CH;
     moveToLane(laneAtY(y));

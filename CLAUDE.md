@@ -36,7 +36,8 @@ src/game/particles.ts   — Particle spawners + update/draw
 src/game/sprites.ts     — drawPlayer/Zombie/Spike/Bat/Ghost/Orb/GoalFlag
 src/game/biomes.ts      — BIOMES, city/forest/sky drawers, crossfade
 src/game/hud.ts         — Radar, HUD, combo popups, achievement banner, speed lines
-src/game/logic.ts       — Combo, achievements, collisions, startGame(), update(dt), render()
+src/game/logic.ts       — Combo, achievements, collisions, startGame(withTutorial), update(dt), render()
+src/game/tutorial.ts    — Interactive tutorial steps (up → down → radar → dodge → done)
 ```
 
 ## Rendering
@@ -65,10 +66,12 @@ src/game/logic.ts       — Combo, achievements, collisions, startGame(), update
 ## Design Decisions
 
 - **Touch input = tap-to-lane:** `pointerdown` anywhere on the page (letterbox bars included) jumps to the lane nearest to the touch Y. No swipe/drag. Keyboard ↑/Space/↓ steps one lane.
-- **Control feedback:** right-edge lane tabs (target lane lit), a brief glow over the chosen lane's tap zone (`world.laneFlash`, set in `moveToLane`) and a landing outline while jumping. No tutorial, no on-screen buttons.
+- **Control feedback:** right-edge lane tabs (target lane lit), a brief glow over the chosen lane's tap zone (`world.laneFlash`, set in `moveToLane`) and a landing outline while jumping. No on-screen buttons.
+- **Tutorial:** offered once, the first time JUGAR is pressed (`escapa_tutorial_seen`), and replayable from Options when it was opened from the menu. It runs inside a normal PLAYING run with `world.tutorial` set: the spawner is off, avoided obstacles give no score and hits cost no HP (`logic.ts` routes them to `tutorial.ts`). Input during the radar step only advances the step (`tutorialConsumesInput`). Prompts use `world.inputMode` (`touch` | `keys`, last input kind).
+- **Goal cue is quiet on purpose:** one `goalAppear` chime, a 2.5 s notice that fades into a progress bar, a snare roll layered on the music (`rushLayer`, grows with intensity) and soft 3-2-1 `countdown` beeps. Never reintroduce a repeating alarm.
 - **Orientation:** landscape 16:9 only; touch devices in portrait get a rotate notice and the run auto-pauses (also on tab hide).
 - **Targets:** Android Chrome + iOS Safari. iOS has no Vibration API (option hidden) and no element fullscreen on iPhone (button hidden). iOS unlocks audio on `pointerup`/`click`, not `pointerdown`.
-- **Phases:** Phase 1 (port + touch + deploy + i18n/options) is done. Phase 2+: new mechanics, generative music, post-processing/shader effects.
+- **Phases:** Phase 1 (port + touch + deploy + i18n/options) is done, plus music, radar look-ahead, control feedback and the tutorial. Next: new mechanics, post-processing/shader effects.
 - **Persistence:** localStorage keys from v1 are kept forever; new option fields fall back to defaults when missing.
 
 ## Adding a New Obstacle Type
@@ -109,6 +112,7 @@ src/game/logic.ts       — Combo, achievements, collisions, startGame(), update
 | Key | Purpose |
 |-----|---------|
 | `escapa_playername` | Last entered player name (plain string, may be empty) |
+| `escapa_tutorial_seen` | `'1'` once the tutorial was offered (accepted, skipped or finished) |
 | `player2_hiscores` | Top-5 `{ name, score, stats, date }` |
 | `player2_daily` | Daily best by `YYYY-MM-DD` (UTC) key |
 | `player2_achievements` | Unlocked achievement timestamps |
