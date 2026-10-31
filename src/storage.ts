@@ -4,7 +4,8 @@
 import { detectLang, type Lang } from './i18n';
 
 export interface Options {
-  volume: number;
+  sfxVolume: number;   // 0..100
+  musicVolume: number; // 0..100
   showRadar: boolean;
   mute: boolean;
   lang: Lang;
@@ -44,14 +45,18 @@ export const storage = {
     if (a[id]) return false;
     a[id] = Date.now(); save(KA, a); return true;
   },
-  // v1 saved only { volume, showRadar, mute }; newer fields fall back to defaults.
-  getOptions: (): Options => ({
-    volume: 70, showRadar: true, mute: false,
-    lang: detectLang(),
-    vibration: true,
-    reduceMotion: matchMedia('(prefers-reduced-motion: reduce)').matches,
-    ...load<Partial<Options>>(KO, {}),
-  }),
+  // v1 saved only { volume, showRadar, mute }; newer fields fall back to defaults
+  // and the old single `volume` becomes the SFX volume.
+  getOptions(): Options {
+    const { volume, ...saved } = load<Partial<Options> & { volume?: number }>(KO, {});
+    return {
+      sfxVolume: volume ?? 70, musicVolume: 60, showRadar: true, mute: false,
+      lang: detectLang(),
+      vibration: true,
+      reduceMotion: matchMedia('(prefers-reduced-motion: reduce)').matches,
+      ...saved,
+    };
+  },
   saveOptions(o: Options) { save(KO, o); },
   getPlayerName(): string { try { return localStorage.getItem(KN) || ''; } catch { return ''; } },
   savePlayerName(n: string) { try { localStorage.setItem(KN, n); } catch { /* storage unavailable */ } },

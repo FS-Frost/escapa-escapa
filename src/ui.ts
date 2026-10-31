@@ -4,6 +4,7 @@ import { storage } from './storage';
 import { t, setLang, LANGS, type Key, type Lang } from './i18n';
 import { world, displayName, STATE, type State } from './game/world';
 import { startGame } from './game/logic';
+import { biomeTheme } from './game/biomes';
 
 // DOM overlays (menus, pause, options, results). Gameplay is all on the canvas.
 
@@ -24,6 +25,15 @@ export function setState(s: State) {
   $('game-wrapper').classList.toggle('playing', s === STATE.PLAYING);
   hideConfirm();
   if (s === STATE.PLAYING) closeOptions();
+  syncMusic(s);
+}
+
+// Menu theme on menus, biome theme in a run (muffled while paused), silence on results.
+function syncMusic(s: State) {
+  if (s === STATE.MENU || s === STATE.HISCORE) audio.setMusic('menu');
+  else if (s === STATE.PLAYING || s === STATE.PAUSED) audio.setMusic(biomeTheme());
+  else audio.setMusic('off', 0.3);
+  audio.setMuffled(s === STATE.PAUSED);
 }
 
 export function togglePause() {
@@ -206,9 +216,13 @@ export function bindUI() {
     saveOpts();
   });
 
-  const vol = $<HTMLInputElement>('vol-slider');
-  vol.value = String(opts.volume);
-  vol.addEventListener('input', () => { audio.setVolume(parseInt(vol.value, 10)); saveOpts(); });
+  const slider = (id: string, get: () => number, set: (v: number) => void) => {
+    const el = $<HTMLInputElement>(id);
+    el.value = String(get());
+    el.addEventListener('input', () => { set(parseInt(el.value, 10)); saveOpts(); });
+  };
+  slider('music-slider', () => opts.musicVolume, v => audio.setMusicVolume(v));
+  slider('sfx-slider', () => opts.sfxVolume, v => audio.setSfxVolume(v));
 
   const toggle = (id: string, get: () => boolean, set: (v: boolean) => void) => {
     const chk = $<HTMLInputElement>(id);

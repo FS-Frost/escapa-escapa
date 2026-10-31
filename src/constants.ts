@@ -9,3 +9,7 @@ export const GOAL_TRAVEL_TIME = 30;  // seconds from spawn to arrival
 export const LANE_ANIM_DUR = 0.15;   // seconds for a one-lane jump
 export const LANE_ARC = 25;          // arc height (px) for a one-lane jump
 export const P = 2;                  // one art pixel = 2×2 logical pixels
+export const PLAYER_X = 80;
+// Obstacles spawn this far ahead of the player (off-screen) and the radar maps
+// exactly this range to its full width, so it previews what is coming.
+export const SPAWN_AHEAD = 1200;

@@ -1,4 +1,4 @@
-import { CW, LANE_Y, GOAL_TRAVEL_TIME } from '../constants';
+import { CW, LANE_Y, GOAL_TRAVEL_TIME, PLAYER_X, SPAWN_AHEAD } from '../constants';
 import { R } from '../gfx/renderer';
 import { world } from './world';
 import { drawZombie, drawSpike, drawBat, drawGhost, drawOrb, drawGoalFlag } from './sprites';
@@ -66,7 +66,7 @@ function drawPit(o: Obstacle) {
 
 // ===== SPAWNER =====
 const MIN_INTERVAL = 1.2;
-const at = CW + 10;
+const at = PLAYER_X + SPAWN_AHEAD;
 
 const SPAWN_PATTERNS: { weight: number; fn: () => Obstacle[] }[] = [
   { weight: 3, fn: () => [makeObs('zombie', 0, at)] },
