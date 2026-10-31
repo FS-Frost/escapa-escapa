@@ -3,30 +3,35 @@
 
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#0a0a0a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 9 9' shape-rendering='crispEdges'%3E%3Crect x='1' y='1' width='7' height='7' fill='%23c084fc'/%3E%3Crect x='2' y='3' width='1' height='1' fill='%231a0a2e'/%3E%3Crect x='5' y='3' width='1' height='1' fill='%231a0a2e'/%3E%3Crect x='3' y='6' width='3' height='1' fill='%231a0a2e'/%3E%3C/svg%3E">
   <title>Escapa Escapa</title>
-  <link rel="stylesheet" href="style.css">
 </head>
 
+<!-- Visible text comes from src/i18n.ts via data-i18n / data-i18n-placeholder / data-i18n-aria. -->
 <body>
   <div id="game-wrapper">
-    <canvas id="game" width="480" height="270"></canvas>
+    <canvas id="game"></canvas>
 
     <!-- MENU -->
     <div id="overlay-menu" class="overlay">
       <div class="panel">
         <h1 class="title">Escapa<br>Escapa</h1>
-        <p class="subtitle">¡Llega a la meta!</p>
+        <p class="subtitle" data-i18n="menu.subtitle"></p>
         <div class="menu-name-row">
-          <label for="menu-name-input" class="menu-name-label">Tu nombre:</label>
-          <input id="menu-name-input" type="text" maxlength="12" placeholder="Jugador" autocomplete="off">
+          <label for="menu-name-input" class="menu-name-label" data-i18n="menu.nameLabel"></label>
+          <input id="menu-name-input" type="text" maxlength="12" autocomplete="off" data-i18n-placeholder="defaultName">
         </div>
-        <button id="btn-start" class="btn btn-primary">▶ JUGAR</button>
-        <button id="btn-hiscores-menu" class="btn">🏆 RÉCORDS</button>
+        <button id="btn-start" class="btn btn-primary" data-i18n="menu.play"></button>
+        <button id="btn-hiscores-menu" class="btn" data-i18n="menu.records"></button>
+        <button id="btn-options-menu" class="btn" data-i18n="menu.options"></button>
         <div class="controls-hint">
-          <span>⬆ / ESPACIO = subir carril</span>
-          <span>⬇ = bajar carril</span>
-          <span>P / ESC = pausa</span>
+          <span data-i18n="controls.tap"></span>
+          <span data-i18n="controls.keys"></span>
+          <span data-i18n="controls.pause"></span>
         </div>
       </div>
     </div>
@@ -34,60 +39,114 @@
     <!-- PAUSE -->
     <div id="overlay-pause" class="overlay hidden">
       <div class="panel">
-        <h2>⏸ PAUSA</h2>
-        <button id="btn-resume" class="btn btn-primary">▶ CONTINUAR</button>
-        <button id="btn-restart-pause" class="btn">↺ REINICIAR</button>
+        <h2 data-i18n="pause.title"></h2>
+        <div id="pause-main" class="btn-stack">
+          <button id="btn-resume" class="btn btn-primary" data-i18n="pause.resume"></button>
+          <button id="btn-restart-pause" class="btn" data-i18n="pause.restart"></button>
+          <button id="btn-options-pause" class="btn" data-i18n="menu.options"></button>
+          <details class="controls-details">
+            <summary data-i18n="controls.title"></summary>
+            <div class="controls-hint">
+              <span data-i18n="controls.tap"></span>
+              <span data-i18n="controls.keys"></span>
+              <span data-i18n="controls.pause"></span>
+            </div>
+          </details>
+          <button id="btn-menu-pause" class="btn btn-small" data-i18n="pause.menu"></button>
+        </div>
+        <div id="pause-confirm" class="btn-stack hidden">
+          <p id="pause-confirm-text" class="confirm-text"></p>
+          <div class="btn-row">
+            <button id="btn-confirm-yes" class="btn btn-danger" data-i18n="common.yes"></button>
+            <button id="btn-confirm-no" class="btn btn-primary" data-i18n="common.no"></button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- OPTIONS (opened from menu or pause; sits above them) -->
+    <div id="overlay-options" class="overlay overlay-top hidden">
+      <div class="panel">
+        <h2 data-i18n="opts.title"></h2>
         <div class="options-section">
           <label class="option-row">
-            <span>Volumen</span>
+            <span data-i18n="opts.language"></span>
+            <select id="sel-lang"></select>
+          </label>
+          <label class="option-row">
+            <span data-i18n="opts.volume"></span>
             <input id="vol-slider" type="range" min="0" max="100" value="70">
           </label>
           <label class="option-row">
-            <input id="chk-radar" type="checkbox" checked>
-            <span>Mostrar radar</span>
+            <input id="chk-mute" type="checkbox">
+            <span data-i18n="opts.mute"></span>
+          </label>
+          <label id="row-vibration" class="option-row">
+            <input id="chk-vibration" type="checkbox">
+            <span data-i18n="opts.vibration"></span>
           </label>
           <label class="option-row">
-            <input id="chk-mute" type="checkbox">
-            <span>Silencio</span>
+            <input id="chk-radar" type="checkbox">
+            <span data-i18n="opts.radar"></span>
+          </label>
+          <label class="option-row">
+            <input id="chk-reduce-motion" type="checkbox">
+            <span data-i18n="opts.reduceMotion"></span>
           </label>
         </div>
-        <button id="btn-menu-pause" class="btn btn-small">⬅ MENÚ</button>
+        <button id="btn-fullscreen" class="btn"></button>
+        <button id="btn-close-options" class="btn btn-primary" data-i18n="opts.back"></button>
       </div>
     </div>
 
     <!-- DEAD -->
     <div id="overlay-dead" class="overlay hidden">
       <div class="panel">
-        <h2 class="dead-title">💀 ¡Player cayó!</h2>
+        <h2 id="dead-title" class="dead-title"></h2>
         <div id="dead-stats" class="stats-block"></div>
-        <button id="btn-restart-dead" class="btn btn-primary">↺ REINTENTAR</button>
-        <button id="btn-menu-dead" class="btn">⬅ MENÚ</button>
+        <button id="btn-restart-dead" class="btn btn-primary" data-i18n="dead.retry"></button>
+        <button id="btn-menu-dead" class="btn" data-i18n="pause.menu"></button>
       </div>
     </div>
 
     <!-- VICTORY -->
     <div id="overlay-victory" class="overlay hidden">
       <div class="panel panel-victory">
-        <h2 class="victory-title">🎉 ¡Player escapó!</h2>
+        <h2 id="victory-title" class="victory-title"></h2>
         <div id="victory-stats" class="stats-block"></div>
-        <button id="btn-restart-victory" class="btn btn-primary">▶ JUGAR DE NUEVO</button>
-        <button id="btn-menu-victory" class="btn">⬅ MENÚ</button>
+        <button id="btn-restart-victory" class="btn btn-primary" data-i18n="victory.again"></button>
+        <button id="btn-menu-victory" class="btn" data-i18n="pause.menu"></button>
       </div>
     </div>
 
     <!-- HIGH SCORES -->
     <div id="overlay-hiscore" class="overlay hidden">
       <div class="panel">
-        <h2>🏆 RÉCORDS</h2>
+        <h2 data-i18n="records.title"></h2>
         <div id="scores-list" class="scores-list"></div>
-        <button id="btn-close-hiscores" class="btn">CERRAR</button>
+        <button id="btn-close-hiscores" class="btn" data-i18n="records.close"></button>
+      </div>
+    </div>
+
+    <!-- NO WEBGL2 -->
+    <div id="no-webgl" class="overlay hidden">
+      <div class="panel">
+        <h2 data-i18n="noWebgl.title"></h2>
+        <p class="subtitle" data-i18n="noWebgl.body"></p>
       </div>
     </div>
 
     <!-- Mobile pause button -->
-    <button id="pause-btn" aria-label="Pausa">⏸</button>
+    <button id="pause-btn" data-i18n-aria="pause.aria">⏸</button>
   </div>
-  <script src="game.js"></script>
+
+  <!-- Portrait notice (touch devices only, via CSS) -->
+  <div id="rotate-notice">
+    <div class="rotate-icon">📱</div>
+    <p data-i18n="rotate"></p>
+  </div>
+
+  <script type="module" src="/src/main.ts"></script>
 </body>
 
 </html>
