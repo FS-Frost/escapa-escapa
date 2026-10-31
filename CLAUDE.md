@@ -52,6 +52,17 @@ INIT               — bindUI(), player init, setState(MENU), requestAnimationFr
 - **`player.targetLane`** is the lane the player is moving toward. **`player.lane`** lags behind until `laneT >= 1`. Collision and expression logic should use `targetLane`, not `lane`.
 - **`obs.passed` / `obs.scored`** flags prevent double-counting when an obstacle exits the screen.
 
+## Redesign Decisions (agreed 2026-10-31, in progress)
+
+- **Target stack:** Vite + TypeScript + WebGL2 (own shaders, no engine). Pixel-art look kept (480×270 logical, pixelated) — shaders add effects, not a new style. Deploy: GitHub Pages via GitHub Actions on push to `main`. Double-click `index.html` no longer a requirement once migrated.
+- **Delivery in phases:** Phase 1 = feature-parity port + new touch input + deploy. New mechanics, generative music, and post-processing/shader effects are Phase 2+.
+- **Touch input = tap-to-lane:** `pointerdown` anywhere maps to the lane whose Y is nearest to the touch. No drag, no swipe. Keyboard ↑/↓/Space keeps one-lane steps.
+- **Multi-lane jumps** (0→2) are one arc; the player does not collide with lanes crossed in transit — only the target lane (consistent with `targetLane` rule above).
+- **Retargeting mid-jump is allowed:** a new input redirects from the current Y; no `laneT` input lock.
+- **Orientation:** landscape 16:9; portrait shows a "rotate device" notice.
+- **Targets:** Android Chrome + iOS Safari.
+- **Persistence:** existing localStorage keys (`player2_*`, `escapa_playername`) must be preserved or migrated transparently — never drop player records.
+
 ## Adding a New Obstacle Type
 
 1. Add draw function `drawMyObs(cx, cy)` in the SPRITES section.

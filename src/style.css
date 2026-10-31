@@ -1,25 +1,42 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+html, body {
+  height: 100%;
+  overscroll-behavior: none;
+}
+
 body {
   background: #0a0a0a;
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 100svh;
-  min-height: 100vh;
+  height: 100vh;
+  height: 100dvh;
   overflow: hidden;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
   font-family: 'Courier New', Courier, monospace;
+  /* Game owns all gestures: no scroll, zoom, selection or callouts */
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 #game-wrapper {
   position: relative;
-  display: inline-block;
+  flex: none;
 }
 
 canvas {
   display: block;
-  image-rendering: pixelated;
-  image-rendering: crisp-edges;
+  width: 100%;
+  height: 100%;
+}
+
+input[type="text"] {
+  user-select: text;
+  -webkit-user-select: text;
 }
 
 /* ===== OVERLAYS ===== */
@@ -49,6 +66,9 @@ canvas {
   min-width: 200px;
   max-width: 320px;
   width: 90%;
+  max-height: 96%;
+  overflow-y: auto;
+  touch-action: pan-y;
   box-shadow: 0 0 30px rgba(168, 85, 247, 0.4);
   color: #fff;
   text-align: center;
@@ -271,6 +291,7 @@ h2 {
 .score-rank { color: #666; min-width: 16px; }
 .score-name { flex: 1; }
 .score-pts  { font-weight: 700; }
+.scores-empty { color: #666; font-size: 11px; padding: 8px; }
 
 /* ===== MOBILE PAUSE BUTTON ===== */
 #pause-btn {
@@ -281,6 +302,8 @@ h2 {
   border: 1px solid #555;
   color: #fff;
   font-size: 14px;
+  min-width: 36px;
+  min-height: 36px;
   padding: 3px 8px;
   cursor: pointer;
   z-index: 15;
@@ -289,7 +312,43 @@ h2 {
   line-height: 1;
 }
 
+@media (pointer: coarse) {
+  #pause-btn { min-width: 44px; min-height: 44px; font-size: 18px; }
+}
+
 #pause-btn:hover { background: rgba(100,50,150,0.7); border-color: #a855f7; }
 
 /* Show pause button when game is running (toggled via JS adding class to wrapper) */
 #game-wrapper.playing #pause-btn { display: block; }
+
+/* ===== ROTATE NOTICE (touch devices in portrait) ===== */
+#rotate-notice {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: #0a0a0a;
+  color: #e879f9;
+  font-size: 16px;
+  font-weight: 700;
+  text-align: center;
+  padding: 24px;
+}
+
+.rotate-icon {
+  font-size: 48px;
+  animation: rotate-hint 1.6s ease-in-out infinite;
+}
+
+@keyframes rotate-hint {
+  0%, 30% { transform: rotate(0deg); }
+  60%, 100% { transform: rotate(-90deg); }
+}
+
+@media (orientation: portrait) and (pointer: coarse) {
+  #rotate-notice { display: flex; }
+}

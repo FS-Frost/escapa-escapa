@@ -3,14 +3,17 @@
 
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#0a0a0a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 9 9' shape-rendering='crispEdges'%3E%3Crect x='1' y='1' width='7' height='7' fill='%23c084fc'/%3E%3Crect x='2' y='3' width='1' height='1' fill='%231a0a2e'/%3E%3Crect x='5' y='3' width='1' height='1' fill='%231a0a2e'/%3E%3Crect x='3' y='6' width='3' height='1' fill='%231a0a2e'/%3E%3C/svg%3E">
   <title>Escapa Escapa</title>
-  <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
   <div id="game-wrapper">
-    <canvas id="game" width="480" height="270"></canvas>
+    <canvas id="game"></canvas>
 
     <!-- MENU -->
     <div id="overlay-menu" class="overlay">
@@ -24,8 +27,8 @@
         <button id="btn-start" class="btn btn-primary">▶ JUGAR</button>
         <button id="btn-hiscores-menu" class="btn">🏆 RÉCORDS</button>
         <div class="controls-hint">
-          <span>⬆ / ESPACIO = subir carril</span>
-          <span>⬇ = bajar carril</span>
+          <span>Toca un carril = saltar ahí</span>
+          <span>⬆ / ESPACIO / ⬇ = cambiar carril</span>
           <span>P / ESC = pausa</span>
         </div>
       </div>
@@ -84,10 +87,25 @@
       </div>
     </div>
 
+    <!-- NO WEBGL2 -->
+    <div id="no-webgl" class="overlay hidden">
+      <div class="panel">
+        <h2>😿 Sin WebGL2</h2>
+        <p class="subtitle">Tu navegador no soporta WebGL2. Actualízalo o prueba con Chrome, Safari o Firefox recientes.</p>
+      </div>
+    </div>
+
     <!-- Mobile pause button -->
     <button id="pause-btn" aria-label="Pausa">⏸</button>
   </div>
-  <script src="game.js"></script>
+
+  <!-- Portrait notice (touch devices only, via CSS) -->
+  <div id="rotate-notice">
+    <div class="rotate-icon">📱</div>
+    <p>Gira el teléfono para jugar</p>
+  </div>
+
+  <script type="module" src="/src/main.ts"></script>
 </body>
 
 </html>
