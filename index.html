@@ -47,6 +47,7 @@
             <button id="btn-start" class="btn btn-primary" data-i18n="menu.play"></button>
             <button id="btn-hiscores-menu" class="btn" data-i18n="menu.records"></button>
             <button id="btn-options-menu" class="btn" data-i18n="menu.options"></button>
+            <button id="btn-jukebox-menu" class="btn" data-i18n="menu.jukebox"></button>
             <button id="btn-install" class="btn hidden" data-i18n="menu.install"></button>
             <div class="controls-hint">
               <span data-i18n="controls.tap"></span>
@@ -133,6 +134,37 @@
           </div>
         </div>
         <button id="btn-close-options" class="btn btn-primary" data-i18n="opts.back"></button>
+      </div>
+    </div>
+
+    <!-- FONOTECA (jukebox, from the main menu) -->
+    <div id="overlay-jukebox" class="overlay overlay-top hidden">
+      <div class="panel">
+        <h2 data-i18n="juke.title"></h2>
+        <div class="cols">
+          <div class="col">
+            <div id="juke-list" class="juke-list"></div>
+          </div>
+          <div class="col">
+            <div id="juke-viz" class="juke-viz" aria-hidden="true"></div>
+            <button id="btn-juke-play" class="btn btn-primary"></button>
+            <div class="options-section juke-options">
+              <label class="option-row">
+                <input id="chk-juke-rush" type="checkbox">
+                <span data-i18n="juke.rush"></span>
+              </label>
+              <label class="option-row">
+                <input id="chk-juke-viz" type="checkbox" checked>
+                <span data-i18n="juke.viz"></span>
+              </label>
+              <label class="option-row">
+                <input id="chk-juke-continuous" type="checkbox">
+                <span data-i18n="juke.continuous"></span>
+              </label>
+            </div>
+            <button id="btn-juke-close" class="btn" data-i18n="records.close"></button>
+          </div>
+        </div>
       </div>
     </div>
 

@@ -28,6 +28,7 @@ src/haptics.ts          — Vibration API patterns
 src/input.ts            — Keyboard, tap-to-lane pointer input, auto-pause hooks
 src/ui.ts               — setState(), overlays, options panel, pause confirm, results, install button
 src/pwa.ts              — Service worker registration + install offer (beforeinstallprompt / iOS help)
+src/jukebox.ts          — Fonoteca: soundtrack player (unlocked tracks, play/pause, rush mode, visualizer, continuous play)
 scripts/pwa-plugin.ts   — Build-time icons (PNG from code), manifest and service worker
 src/style.css           — Overlay/panel styles, touch/safe-area handling, portrait pad
 src/gfx/renderer.ts     — Batched WebGL2 renderer (`R`): rect, gradientV, tri, circle, radial, line, text
@@ -114,7 +115,8 @@ src/game/tutorial.ts    — Interactive tutorial steps (up → down → radar �
 - The `AudioContext` is created lazily on the first user gesture (`audio.init()`); never at module load.
 - Music: themes `menu | city | forest | sky` in `THEMES` (bpm + 4-bar progression, all in A minor) with per-theme patterns in `playStep()`. All themes share one 16th-note step clock (look-ahead scheduler), so `audio.setMusic(theme, fadeS)` crossfades in time.
 - Who sets the music: `setState()` (`ui.ts`) → menu theme on MENU/HISCORE, biome theme in a run (muffled while PAUSED), silence on DEAD/VICTORY. `update()` follows the biome (`biomeTheme()`, 3 s crossfade) and raises tempo with the goal rush (`setIntensity`).
-- Adding a biome theme: add it to `MusicSection`/`THEMES` and a `case` in `playStep()`; the name must match the biome name.
+- Adding a biome theme: add it to `MusicSection`/`THEMES` and a `case` in `playStep()`; the name must match the biome name. Also add it to `TRACKS` in `jukebox.ts` (+ `track.*` / lock-hint i18n keys).
+- Fonoteca hooks: `audio.onLoop(cb)` fires when the 4-bar loop wraps (continuous play switches track every `LOOPS_PER_TRACK` loops); `audio.getSpectrum(buf)` reads an `AnalyserNode` on the music bus (visualizer). Intensity is reset to 0 outside a run (`syncMusic`), so the jukebox rush toggle and the game don't leak into the menu.
 - Vibration patterns live in `PATTERNS` (`haptics.ts`); play with `haptics.play('name')`.
 
 ## localStorage Keys
@@ -123,6 +125,7 @@ src/game/tutorial.ts    — Interactive tutorial steps (up → down → radar �
 |-----|---------|
 | `escapa_playername` | Last entered player name (plain string, may be empty) |
 | `escapa_tutorial_seen` | `'1'` once the tutorial was offered (accepted, skipped or finished) |
+| `escapa_music_unlocked` | Fonoteca tracks unlocked, default `["menu","city"]`; a biome's theme unlocks when the biome is first reached (`updateBiomes`) |
 | `player2_hiscores` / `player2_hiscores_easy` / `player2_hiscores_normal` | Top-5 `{ name, score, stats, date }` per difficulty; the unsuffixed key is **hard** (v1 records were played with hard rules) |
 | `player2_daily` (+ `_easy` / `_normal`) | Daily best by `YYYY-MM-DD` (UTC) key, per difficulty (unsuffixed = hard) |
 | `player2_achievements` | Unlocked achievement timestamps |

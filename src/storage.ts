@@ -19,7 +19,7 @@ export interface ScoreEntry { name: string; score: number; stats: RunStats; date
 
 const KH = 'player2_hiscores', KD = 'player2_daily',
   KA = 'player2_achievements', KO = 'player2_options', KN = 'escapa_playername',
-  KT = 'escapa_tutorial_seen';
+  KT = 'escapa_tutorial_seen', KM = 'escapa_music_unlocked';
 
 // Records and daily bests are per difficulty. v1 played with hard rules, so
 // hard keeps the original keys; easy/normal get suffixed ones.
@@ -71,5 +71,11 @@ export const storage = {
   // Set once the tutorial was offered and accepted, skipped or finished.
   getTutorialSeen(): boolean { try { return localStorage.getItem(KT) === '1'; } catch { return true; } },
   setTutorialSeen() { try { localStorage.setItem(KT, '1'); } catch { /* storage unavailable */ } },
+  // Jukebox: tracks unlocked by reaching their biome (menu and city from the start).
+  getUnlockedTracks: (): string[] => load<string[]>(KM, ['menu', 'city']),
+  unlockTrack(id: string) {
+    const list = this.getUnlockedTracks();
+    if (!list.includes(id)) save(KM, [...list, id]);
+  },
   savePlayerName(n: string) { try { localStorage.setItem(KN, n); } catch { /* storage unavailable */ } },
 };

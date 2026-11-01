@@ -12,7 +12,7 @@ import type { Options } from './storage';
 // scheduled on the same step clock, so switching themes crossfades in time.
 
 export type MusicSection = 'off' | 'menu' | 'city' | 'forest' | 'sky';
-type Theme = Exclude<MusicSection, 'off'>;
+export type Theme = Exclude<MusicSection, 'off'>;
 
 const midiToHz = (midi: number) => 440 * 2 ** ((midi - 69) / 12);
 
@@ -56,6 +56,8 @@ let ac: AudioContext | null = null;
 let master: GainNode;
 let sfxGain: GainNode;
 let musicGain: GainNode;
+let analyser: AnalyserNode;
+let loopListener: (() => void) | null = null; // called when the 4-bar loop wraps
 let musicFilter: BiquadFilterNode;
 let noise: AudioBuffer;
 const themeGains = {} as Record<Theme, GainNode>;
@@ -91,6 +93,11 @@ function createGraph() {
 
   musicGain = ctx.createGain();
   musicGain.connect(master);
+  // Tap for the jukebox visualizer (post volume, so it follows the music slider)
+  analyser = ctx.createAnalyser();
+  analyser.fftSize = 256;
+  analyser.smoothingTimeConstant = 0.75;
+  musicGain.connect(analyser);
   musicFilter = ctx.createBiquadFilter();
   musicFilter.type = 'lowpass';
   musicFilter.frequency.value = OPEN_FILTER_HZ;
@@ -141,10 +148,11 @@ function schedule() {
     for (const name of Object.keys(THEMES) as Theme[]) {
       if (name === lead || (audibleUntil[name] ?? 0) > nextStepTime) playStep(name, step, nextStepTime);
     }
-    if (lead && lead !== 'menu' && intensity > 0) rushLayer(lead, step, nextStepTime);
-    const bpm = lead ? THEMES[lead].bpm * (lead === 'menu' ? 1 : 1 + intensity * 0.25) : 100;
+    if (lead && intensity > 0) rushLayer(lead, step, nextStepTime);
+    const bpm = lead ? THEMES[lead].bpm * (1 + intensity * 0.25) : 100;
     nextStepTime += 60 / bpm / 4;
     step = (step + 1) % (STEPS_PER_BAR * BARS);
+    if (step === 0 && lead) loopListener?.();
   }
 }
 
@@ -347,6 +355,14 @@ export const audio = {
   },
   // 0..1, raises the tempo of game themes.
   setIntensity(v: number) { intensity = Math.max(0, Math.min(1, v)); },
+  // Called each time the current theme completes its 4-bar loop (null to stop).
+  onLoop(cb: (() => void) | null) { loopListener = cb; },
+  // Fills `out` with music frequency levels (0..255); false if audio isn't running.
+  getSpectrum(out: Uint8Array<ArrayBuffer>): boolean {
+    if (!ac || ac.state !== 'running') return false;
+    analyser.getByteFrequencyData(out);
+    return true;
+  },
   // Muffles the music like it plays in another room (pause).
   setMuffled(muffled: boolean) {
     if (!ac) return;

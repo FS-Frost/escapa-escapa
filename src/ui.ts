@@ -1,3 +1,4 @@
+import { bindJukebox, openJukebox, closeJukebox, isJukeboxOpen } from './jukebox';
 import { initPwa, installMode, promptInstall } from './pwa';
 import { audio } from './audio';
 import { haptics } from './haptics';
@@ -37,6 +38,7 @@ function syncMusic(s: State) {
   else if (s === STATE.PLAYING || s === STATE.PAUSED) audio.setMusic(biomeTheme());
   else audio.setMusic('off', 0.3);
   audio.setMuffled(s === STATE.PAUSED);
+  if (s !== STATE.PLAYING && s !== STATE.PAUSED) audio.setIntensity(0); // no goal-rush tempo outside a run
 }
 
 export function togglePause() {
@@ -50,7 +52,8 @@ export function pauseIfPlaying() {
 
 // Escape backs out of the innermost layer: tutorial offer / options → confirm → pause toggle.
 export function handleEscape() {
-  if (!$('overlay-install-ios').classList.contains('hidden')) show('overlay-install-ios', false);
+  if (isJukeboxOpen()) closeJukebox();
+  else if (!$('overlay-install-ios').classList.contains('hidden')) show('overlay-install-ios', false);
   else if (!$('overlay-tutorial-offer').classList.contains('hidden')) show('overlay-tutorial-offer', false);
   else if (isOptionsOpen()) closeOptions();
   else if (!$('pause-confirm').classList.contains('hidden')) hideConfirm();
@@ -243,6 +246,8 @@ export function bindUI() {
     setState(STATE.HISCORE);
   });
   click('btn-options-menu', () => { audio.init(); openOptions(); });
+  click('btn-jukebox-menu', openJukebox);
+  bindJukebox();
 
   // Pause: destructive actions ask first
   click('btn-resume', togglePause);

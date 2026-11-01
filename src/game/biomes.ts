@@ -2,6 +2,7 @@ import { CW, CH, RADAR_H, LANE_Y } from '../constants';
 import { R } from '../gfx/renderer';
 import { rgba } from '../gfx/color';
 import { world } from './world';
+import { storage } from '../storage';
 
 export const BIOMES = [
   { scoreStart: 0, name: 'city' },
@@ -180,6 +181,7 @@ export function updateBiomes(dt: number) {
   const newBiome = BIOMES.reduce((cur, b, i) => world.score >= b.scoreStart ? i : cur, 0);
   if (newBiome !== world.currentBiome && !world.biomeTransition) {
     world.biomeTransition = { from: world.currentBiome, to: newBiome, t: 0, dur: 3.0 };
+    storage.unlockTrack(BIOMES[newBiome].name); // jukebox: reaching a biome unlocks its theme
   }
   const bt = world.biomeTransition;
   if (bt) {

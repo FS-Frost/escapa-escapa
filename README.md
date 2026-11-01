@@ -60,6 +60,7 @@ Jumping from the bottom to the top lane is a single arc; obstacles in the middle
 - **3 biomes** — City → Forest → Sky — with parallax and crossfades
 - **Procedural pixel font**, crisp at any screen size
 - **Procedural music**: a theme per biome (plus a menu theme) with crossfades, speeding up as the goal approaches
+- **Fonoteca**: a soundtrack player in the main menu — biome themes unlock as you reach them; rush mode, visualizer and continuous play
 - **Synthesized sound effects** (Web Audio API) and **vibration** on supported phones
 - **Three difficulties**: Easy (5 lives, slower), Normal (3 lives), Hard (1 life); fair obstacle patterns and a gentle start
 - **Achievements**, **top-5 high scores** per difficulty with your name, and a daily best

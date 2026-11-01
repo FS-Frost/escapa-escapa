@@ -269,6 +269,17 @@ Each SFX schedules `Oscillator → Gain → sfxGain` with an exponential decay.
 | nearMiss | sine | Subtle blip |
 | achievement | sine, 3 notes | Unlock jingle |
 
+## Fonoteca (jukebox)
+
+Opened from the main menu ("🎵 FONOTECA"). It lists the four themes; Menu and City are available from the start, and Forest and Sky unlock the first time their biome is reached (stored in `escapa_music_unlocked`; locked tracks show "??? · reach the …").
+
+- **Play / pause:** tap a track to play it (crossfade); the button pauses (music fades out) and resumes.
+- **Rush mode:** plays the track at goal-rush intensity (+25% tempo and the growing snare roll).
+- **Visualizer:** 16 pixel bars driven by an `AnalyserNode` on the music bus (post volume), sampled on a roughly logarithmic frequency scale.
+- **Continuous play:** after 4 loops of a track it moves on to the next unlocked one (`audio.onLoop`).
+
+Closing it (button or Esc) resets intensity and returns to the menu theme.
+
 ## Haptics
 
 `navigator.vibrate` patterns for jump, hit, death, power-up, combo, achievement and victory. They fire only if the option is on and the API exists. iOS Safari has no Vibration API, so the option is hidden there.
