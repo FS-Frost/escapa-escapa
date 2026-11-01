@@ -285,11 +285,10 @@
     <button id="tutorial-skip" data-i18n="tut.skip"></button>
   </div>
 
-  <!-- Lane pad, portrait only (via body.portrait): big thumb buttons -->
+  <!-- Lane pad, portrait only (via body.portrait): up / down one lane per press -->
   <div id="touch-pad">
-    <button class="pad-btn" data-lane="2" data-i18n="pad.up"></button>
-    <button class="pad-btn" data-lane="1" data-i18n="pad.mid"></button>
-    <button class="pad-btn" data-lane="0" data-i18n="pad.down"></button>
+    <button class="pad-btn" data-dir="1" data-i18n="pad.up"></button>
+    <button class="pad-btn" data-dir="-1" data-i18n="pad.down"></button>
   </div>
 
   <script type="module" src="/src/main.ts"></script>

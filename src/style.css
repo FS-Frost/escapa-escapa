@@ -70,21 +70,19 @@ body.portrait #touch-pad {
 
 .pad-btn {
   flex: 1;
-  border: 2px solid #3d3d6e;
+  border: 2px solid #a855f7;
   border-radius: 10px;
-  background: #16162a;
-  color: #a0a0c0;
+  background: #1e1640;
+  color: #fff;
   font-family: inherit;
-  font-size: 1.3rem;
+  font-size: 1.6rem;
   font-weight: 700;
   letter-spacing: 2px;
   touch-action: none;
 }
 
-.pad-btn.target {
-  border-color: #e879f9;
-  background: #2d1b4e;
-  color: #fff;
+.pad-btn.edge {
+  opacity: 0.4;
 }
 
 .pad-btn:active {

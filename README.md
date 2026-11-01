@@ -25,7 +25,7 @@ Pushing to `main` deploys to GitHub Pages automatically (`.github/workflows/depl
 
 | Action | Touch / mouse | Keyboard |
 |--------|---------------|----------|
-| Jump to a lane | Tap that lane (anywhere on screen, even mid-jump); in portrait, also the big ▲ ● ▼ buttons | — |
+| Jump to a lane | Tap that lane (anywhere on screen, even mid-jump); in portrait, also the big ▲ / ▼ buttons (one lane per press) | — |
 | Move up / down one lane | — | `↑` or `Space` / `↓` |
 | Pause / Resume | ⏸ button | `P` or `Esc` |
 

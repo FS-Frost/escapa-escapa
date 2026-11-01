@@ -2,6 +2,7 @@ import { CW, CH, LANE_Y, LANE_COUNT, PLAYER_X, RADAR_H } from '../constants';
 import { R } from '../gfx/renderer';
 import { world } from './world';
 import { laneSet, isPickup } from './obstacles';
+import { audio } from '../audio';
 
 // Biome hazards that aren't regular obstacles:
 //  - beams (sky): a lane charges for BEAM_CHARGE s (blinking warning), then a
@@ -15,10 +16,11 @@ export const BEAM_FIRE = 0.45;
 
 export function spawnBeam(lane: number) {
   world.beams.push({ lane, t: 0, hit: false, done: false });
+  audio.play('beamCharge');
 }
 
-// A beam must not, together with what reaches the player when it fires,
-// leave no lane free; only one beam per lane at a time.
+// A beam must not, together with what passes the player while it fires
+// (charge → end of fire), leave no lane free; one beam per lane at a time.
 export function beamAllowed(lane: number): boolean {
   if (world.beams.some(b => !b.done && b.lane === lane)) return false;
   const spd = world.scrollSpeed * world.speedBoost;
@@ -27,7 +29,7 @@ export function beamAllowed(lane: number): boolean {
   for (const o of world.obstacles) {
     if (isPickup(o)) continue;
     const xAtFire = o.x - spd * BEAM_CHARGE;
-    if (xAtFire > PLAYER_X - 40 && xAtFire < PLAYER_X + 80) for (const l of laneSet(o)) lanes.add(l);
+    if (xAtFire + o.w > PLAYER_X - 40 && xAtFire < PLAYER_X + spd * BEAM_FIRE + 60) for (const l of laneSet(o)) lanes.add(l);
   }
   return lanes.size < LANE_COUNT;
 }
@@ -38,6 +40,7 @@ export const beamFiring = (b: { t: number }) => b.t >= BEAM_CHARGE && b.t < BEAM
 export function updateBeams(dt: number): { lane: number; hit: boolean }[] {
   const finished: { lane: number; hit: boolean }[] = [];
   for (const b of world.beams) {
+    if (b.t < BEAM_CHARGE && b.t + dt >= BEAM_CHARGE) audio.play('beamFire');
     b.t += dt;
     if (!b.done && b.t >= BEAM_CHARGE + BEAM_FIRE) { b.done = true; finished.push(b); }
   }

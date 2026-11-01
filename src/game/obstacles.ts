@@ -3,6 +3,7 @@ import { RULES } from './difficulty';
 import { R } from '../gfx/renderer';
 import { world, type PowerKind } from './world';
 import { rand, randInt } from './rng';
+import { audio } from '../audio';
 import { spawnBeam, beamAllowed } from './hazards';
 import {
   drawZombie, drawSpike, drawBat, drawGhost, drawOrb, drawGoalFlag, drawGeyser, drawGem, drawPowerUp,
@@ -77,13 +78,13 @@ export function updateObstacle(o: Obstacle, dt: number, spd: number) {
   if ((o.type === 'gem' && !pulled) || o.type === 'power') o.y = LANE_Y[o.lane] + OBS_YOFF[o.type] + Math.sin(t * 4 + o.sineOffset) * 2;
   if (o.type === 'swoop') {
     // Collides in the new lane from the moment it starts switching
-    if (o.switchT === undefined && ahead < SWOOP_AT) { o.switchT = 0; o.lane = o.toLane!; }
+    if (o.switchT === undefined && ahead < SWOOP_AT) { o.switchT = 0; o.lane = o.toLane!; audio.play('swoop'); }
     if (o.switchT !== undefined && o.switchT < 1) o.switchT = Math.min(1, o.switchT + dt / SWOOP_DUR);
     const k = o.switchT ?? 0, e = k * k * (3 - 2 * k);
     const fromY = LANE_Y[o.fromLane!] - 4, toY = LANE_Y[o.toLane!] - 4;
     o.y = fromY + (toY - fromY) * e + Math.sin(t * 5) * 2;
   }
-  if (o.type === 'geyser' && !o.erupted && ahead < GEYSER_AT) o.erupted = true;
+  if (o.type === 'geyser' && !o.erupted && ahead < GEYSER_AT) { o.erupted = true; audio.play('geyser'); }
 
   // Magnet power pulls nearby gems toward the player
   if (pulled) {
@@ -163,19 +164,27 @@ const BIOME_PATTERNS: Pattern[][] = [
 // Gentle start: the first WARMUP_DIST px spawn single obstacles, further apart.
 const WARMUP_DIST = 2200;
 const WARMUP_EXTRA_INTERVAL = 0.9;
-// Endless/daily ramp: pace and speed grow over RAMP_DIST px.
-const RAMP_DIST = 30000;
+// Endless/daily difficulty: an exponential curve over distance that reaches
+// its cap at RAMP_DIST px — slow at first, then steeper and steeper.
+const RAMP_DIST = 40000;
+const RAMP_K = 20000; // smaller = flatter start, sharper end
 // Fairness: around any spawn, obstacles within this time window (reaction +
 // longest jump) must leave at least one lane free.
 const FAIR_WINDOW_S = 0.5;
+const MIN_INTERVAL_S = 0.45;
 const FAIR_RETRY_PX = 20;
 const GEM_CHANCE = 0.3;
 const POWER_CHANCE = 0.05;
 const ORB_CHANCE = 0.15;
 
+// Harder levels favour multi-obstacle patterns and biome mechanics (up to 3×).
+function weightOf(p: Pattern): number {
+  return p.simple ? p.weight : p.weight * (1 + 2 * difficultyLevel());
+}
+
 function pick(pool: Pattern[]): Pattern {
-  let r = rand() * pool.reduce((s, p) => s + p.weight, 0);
-  for (const p of pool) { r -= p.weight; if (r <= 0) return p; }
+  let r = rand() * pool.reduce((s, p) => s + weightOf(p), 0);
+  for (const p of pool) { r -= weightOf(p); if (r <= 0) return p; }
   return pool[0];
 }
 
@@ -189,20 +198,28 @@ function blocksAllLanes(candidate: Obstacle[], x: number): boolean {
   return lanes.size >= LANE_COUNT;
 }
 
-// 0..1 progression of an endless/daily run by distance.
-export const endlessRamp = () => Math.min(1, world.worldX / RAMP_DIST);
+// 0..1 difficulty level. Endless/daily: exponential in distance, capped.
+// Stages: a gentle rise toward the goal on top of the stage's own settings.
+// The cap keeps everything inside the fairness limits: top speed 2.3×, min
+// interval 0.45 s (≥ reaction + longest jump), always a free lane.
+export function difficultyLevel(): number {
+  if (world.stage) return Math.min(1, world.score / world.stage.goalScore);
+  return Math.min(1, (Math.exp(world.worldX / RAMP_K) - 1) / (Math.exp(RAMP_DIST / RAMP_K) - 1));
+}
+export const endlessRamp = difficultyLevel;
 
 // Scroll speed before goal rush / slow-mo.
 export function baseScrollSpeed(): number {
   const rules = RULES[world.difficulty];
-  if (world.stage) return BASE_SPEED * rules.speed * world.stage.speed;
-  return BASE_SPEED * rules.speed * (1 + 0.9 * endlessRamp());
+  if (world.stage) return BASE_SPEED * rules.speed * world.stage.speed * (1 + 0.1 * difficultyLevel());
+  return BASE_SPEED * rules.speed * (1 + 1.3 * difficultyLevel());
 }
 
 function spawnInterval(warm: number): number {
   const rules = RULES[world.difficulty];
-  const base = world.stage ? 1.1 * world.stage.interval : 1.2 - 0.7 * endlessRamp();
-  return base * rules.interval + warm * WARMUP_EXTRA_INTERVAL + rand() * 0.3;
+  const level = difficultyLevel();
+  const base = world.stage ? 1.1 * world.stage.interval * (1 - 0.15 * level) : 1.2 - 0.75 * level;
+  return Math.max(MIN_INTERVAL_S, base * rules.interval) + warm * WARMUP_EXTRA_INTERVAL + rand() * 0.3 * (1 - 0.5 * level);
 }
 
 export function updateSpawner(biome: number) {

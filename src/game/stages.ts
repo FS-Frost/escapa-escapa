@@ -14,16 +14,19 @@ export interface StageDef {
   simpleOnly?: boolean; // only single-obstacle patterns (first stage)
 }
 
-export const STAGES: StageDef[] = [
-  { id: 1, biome: 0, goalScore: 25, speed: 0.95, interval: 1.15, simpleOnly: true },
-  { id: 2, biome: 0, goalScore: 40, speed: 1.05, interval: 1.0 },
-  { id: 3, biome: 1, goalScore: 40, speed: 1.05, interval: 1.05 },
-  { id: 4, biome: 1, goalScore: 55, speed: 1.15, interval: 0.95 },
-  { id: 5, biome: 2, goalScore: 55, speed: 1.1, interval: 1.0 },
-  { id: 6, biome: 3, goalScore: 55, speed: 1.05, interval: 1.05 },
-  { id: 7, biome: 4, goalScore: 65, speed: 1.2, interval: 0.95 },
-  { id: 8, biome: 5, goalScore: 80, speed: 1.25, interval: 0.9 },
-];
+// Difficulty grows exponentially stage by stage: each one is ~6.5% faster,
+// ~7% denser and needs ~20% more points than the previous. Stage 8 ends at
+// 1.5× speed / 0.69× interval, still inside the fairness limits (see
+// obstacles.ts), so it is hard but never impossible.
+const BIOME_OF = [0, 0, 1, 1, 2, 3, 4, 5];
+export const STAGES: StageDef[] = BIOME_OF.map((biome, i) => ({
+  id: i + 1,
+  biome,
+  goalScore: Math.round(25 * 1.2 ** i),
+  speed: 0.95 * 1.065 ** i,
+  interval: 1.15 * 0.93 ** i,
+  simpleOnly: i === 0,
+}));
 
 export const STAGE_GOAL_TRAVEL_S = 15;
 export const MAX_STARS = STAGES.length * 3;

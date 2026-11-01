@@ -346,7 +346,8 @@ function noiseHit(out: AudioNode, t: number, type: BiquadFilterType, freq: numbe
 }
 
 // ===== SFX =====
-function tone(freq: number, dur: number, type: OscillatorType = 'square', vol = 0.3, delay = 0) {
+// `slideTo`: glide the pitch to this frequency over the tone's duration.
+function tone(freq: number, dur: number, type: OscillatorType = 'square', vol = 0.3, delay = 0, slideTo?: number) {
   const a = getAC();
   const t0 = a.currentTime + delay;
   const osc = a.createOscillator();
@@ -354,6 +355,7 @@ function tone(freq: number, dur: number, type: OscillatorType = 'square', vol = 
   osc.connect(g); g.connect(sfxGain);
   osc.type = type;
   osc.frequency.setValueAtTime(freq, t0);
+  if (slideTo) osc.frequency.exponentialRampToValueAtTime(slideTo, t0 + dur);
   g.gain.setValueAtTime(0, t0);
   g.gain.linearRampToValueAtTime(vol, t0 + 0.01);
   g.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
@@ -361,7 +363,33 @@ function tone(freq: number, dur: number, type: OscillatorType = 'square', vol = 
   osc.stop(t0 + dur + 0.01);
 }
 
+// Filtered noise burst on the SFX bus; the filter sweeps from `from` to `to` Hz.
+function sfxNoise(dur: number, vol: number, type: BiquadFilterType, from: number, to: number, attack = 0.01, delay = 0) {
+  const a = getAC();
+  const t0 = a.currentTime + delay;
+  const src = a.createBufferSource();
+  const filter = a.createBiquadFilter();
+  const g = a.createGain();
+  src.buffer = noise;
+  src.loop = true;
+  filter.type = type;
+  filter.frequency.setValueAtTime(from, t0);
+  filter.frequency.exponentialRampToValueAtTime(to, t0 + dur);
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.linearRampToValueAtTime(vol, t0 + attack);
+  g.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+  src.connect(filter).connect(g).connect(sfxGain);
+  src.start(t0, Math.random() * 0.5);
+  src.stop(t0 + dur + 0.02);
+}
+
 const sounds = {
+  // Biome hazards
+  beamCharge() { tone(220, 1.15, 'sawtooth', 0.06, 0, 880); tone(440, 1.15, 'sine', 0.05, 0, 1760); },
+  beamFire() { sfxNoise(0.45, 0.28, 'bandpass', 4000, 700); tone(1400, 0.4, 'square', 0.08, 0, 300); },
+  geyser() { sfxNoise(0.7, 0.35, 'lowpass', 300, 2500, 0.05); tone(90, 0.5, 'sine', 0.25, 0, 45); },
+  swoop() { tone(1800, 0.18, 'triangle', 0.1, 0, 700); tone(2400, 0.12, 'sine', 0.05, 0.03, 1200); },
+  storm() { sfxNoise(2.2, 0.22, 'bandpass', 500, 1600, 0.6); sfxNoise(1.6, 0.12, 'highpass', 3000, 6000, 0.4, 0.3); },
   jump() { tone(330, 0.06, 'square', 0.2); tone(660, 0.06, 'square', 0.15, 0.04); },
   hit() { tone(180, 0.25, 'sawtooth', 0.45); tone(90, 0.2, 'sawtooth', 0.3, 0.05); },
   powerup() { [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.12, 'sine', 0.28, i * 0.07)); },

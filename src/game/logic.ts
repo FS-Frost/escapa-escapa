@@ -373,6 +373,7 @@ export function update(dt: number) {
   const storm = stormLevel();
   if (storm > 0 && stormWas === 0) {
     w.caption = { title: t('storm.title'), sub: t('storm.sub'), life: 2.2, maxLife: 2.2, color: '#f5deb3' };
+    audio.play('storm');
   }
   stormWas = storm;
 

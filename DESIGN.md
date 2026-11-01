@@ -79,7 +79,7 @@ Menu screens (mode select, stage select, skins, options, Fonoteca, tutorial offe
 
 - **Touch / mouse:** `pointerdown` anywhere on the page (letterbox bars included) maps the pointer Y to logical Y and jumps to the nearest lane (`laneAtY` → `moveToLane`). Taps on buttons, inputs and overlays are ignored.
 - **Keyboard:** `↑`/`Space` and `↓` move one lane from `targetLane`; `P`/`Esc` pause.
-- **Portrait pad:** three big buttons (▲ up, ● middle, ▼ down) jump straight to their lane; the target lane's button is lit. Taps below the canvas that miss a button are ignored.
+- **Portrait pad:** two big buttons, ▲ up and ▼ down, each moving one lane per press (two presses to cross from bottom to top); the button that can't move further is dimmed. Taps below the canvas that miss a button are ignored.
 - **Auto-pause:** only when the page is hidden. Rotation re-lays out and the run continues.
 - **iOS audio unlock:** `audio.init()` also runs on `pointerup`, since iOS doesn't count `pointerdown` as a user activation.
 - **Gestures:** `touch-action: none` and `user-select: none` on the body stop scroll, zoom and selection; overlay panels allow vertical panning.
@@ -113,8 +113,11 @@ The spawner is **distance-based and seeded**: a spawn fires each time `worldX` p
 ```
 gap (px)  = interval(s) · current speed
 interval  = base · difficulty.interval + warm · 0.9 + rand() · 0.3
-base      = stage: 1.1 · stage.interval      endless/daily: 1.2 − 0.7 · ramp
-ramp      = min(1, worldX / 30000)          speed (endless) = base speed · (1 + 0.9 · ramp)
+level     = endless/daily: (e^(worldX/20000) − 1) / (e^2 − 1), capped at 1 (worldX ≥ 40000)
+            stage: score / goalScore
+base      = stage: 1.1 · stage.interval · (1 − 0.15 · level)     endless/daily: 1.2 − 0.75 · level
+interval  ≥ 0.45 s (reaction + longest jump), random part shrinks with level
+speed     = endless/daily: base speed · (1 + 1.3 · level) → 2.3× cap     stage: stage.speed · (1 + 0.1 · level)
 warm      = max(0, 1 − worldX / 2200)
 ```
 
@@ -136,7 +139,7 @@ Obstacles spawn off-screen at `PLAYER_X + SPAWN_AHEAD` (1280 px; the screen ends
 | Endless | None | Random seed; biomes cycle; pace ramps | Top-5 per difficulty + daily best |
 | Daily | None | Date seed, normal difficulty | Best per day |
 
-Stages: 1-2 city (stage 1 only single obstacles), 3-4 forest, 5 sky, 6 cave, 7 volcano, 8 desert, with rising goal score and speed. Stars: ★ cleared, ★ no hits, ★ reached ×4. A stage unlocks when the previous one has ≥1 star. JUGAR opens the mode select; the one-time tutorial runs as stage 1.
+Stages: 1-2 city (stage 1 only single obstacles), 3-4 forest, 5 sky, 6 cave, 7 volcano, 8 desert. Each stage is exponentially harder than the previous: speed ×1.065, interval ×0.93 and goal score ×1.2 per stage (25 → 90 points, 0.95× → 1.48× speed). Multi-obstacle and mechanic patterns get up to 3× likelier as the level rises. A max-level simulation over all biomes found no moment without a free lane. Stars: ★ cleared, ★ no hits, ★ reached ×4. A stage unlocks when the previous one has ≥1 star. JUGAR opens the mode select; the one-time tutorial runs as stage 1.
 
 **Gems & power-ups:** gems collected in a run are banked into the wallet when the run ends (death or victory). Shield absorbs one hit (1 s grace afterwards), magnet pulls gems within 220 px for 8 s, slow-mo scales scroll speed by 0.6 for 5 s (distance-based spawning keeps the layout unchanged).
 
@@ -293,6 +296,11 @@ Each SFX schedules `Oscillator → Gain → sfxGain` with an exponential decay.
 | pass | square | Tiny blip |
 | goalAppear | triangle, 3 notes | Soft rising chime, once |
 | countdown | sine | Soft beep at 3-2-1 s before the goal |
+| beamCharge | saw + sine rising | Beam starts charging |
+| beamFire | noise sweep + square drop | Beam fires |
+| swoop | triangle glide down | Red bat switches lane |
+| geyser | low noise swell + sub drop | Geyser erupts |
+| storm | slow noise swell | Sandstorm rolls in |
 | combo | sine, two-tone | Shine |
 | nearMiss | sine | Subtle blip |
 | achievement | sine, 3 notes | Unlock jingle |

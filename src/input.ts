@@ -40,14 +40,14 @@ export function bindInput(canvas: HTMLCanvasElement) {
     moveToLane(laneAtY(y));
   }, { passive: false });
 
-  // Portrait lane pad: each button jumps straight to its lane.
+  // Portrait lane pad: ▲ / ▼ move one lane per press (twice to cross two lanes).
   for (const btn of document.querySelectorAll<HTMLButtonElement>('.pad-btn')) {
     btn.addEventListener('pointerdown', e => {
       e.preventDefault();
       if (world.state !== STATE.PLAYING) return;
       world.inputMode = 'touch';
       if (tutorialConsumesInput()) return;
-      moveToLane(Number(btn.dataset.lane));
+      moveToLane(world.player.targetLane + Number(btn.dataset.dir));
     });
   }
 

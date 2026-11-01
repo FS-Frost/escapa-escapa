@@ -207,11 +207,14 @@ function renderScoresList(diff: Difficulty = world.opts.difficulty) {
   }));
 }
 
-// Portrait pad: light up the button of the lane the cube is heading to.
+// Portrait pad: dim the button that can't move further (top / bottom lane).
 const padButtons = () => document.querySelectorAll<HTMLButtonElement>('.pad-btn');
 export function syncPad() {
   const target = world.player.targetLane;
-  for (const b of padButtons()) b.classList.toggle('target', Number(b.dataset.lane) === target);
+  for (const b of padButtons()) {
+    const dir = Number(b.dataset.dir);
+    b.classList.toggle('edge', (dir > 0 && target === 2) || (dir < 0 && target === 0));
+  }
 }
 
 // ===== BINDINGS =====
