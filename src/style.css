@@ -1,5 +1,11 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+/* Fluid base size: ~16-17px on phones, up to 22px on large screens.
+   Everything in the DOM UI is in rem/em so it scales together. */
+html {
+  font-size: clamp(16px, 2.2vmin + 8px, 22px);
+}
+
 html, body {
   height: 100%;
   overscroll-behavior: none;
@@ -28,7 +34,22 @@ body {
   flex: none;
 }
 
-/* Portrait: game on top, lane pad fills the rest */
+canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+input[type="text"] {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.hidden {
+  display: none !important;
+}
+
+/* ===== PORTRAIT: game on top, lane pad fills the rest ===== */
 body.portrait {
   flex-direction: column;
   justify-content: flex-start;
@@ -43,8 +64,8 @@ body.portrait #touch-pad {
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 12px 16px 16px;
+  gap: 0.6rem;
+  padding: 0.75rem 1rem 1rem;
 }
 
 .pad-btn {
@@ -54,7 +75,7 @@ body.portrait #touch-pad {
   background: #16162a;
   color: #a0a0c0;
   font-family: inherit;
-  font-size: 18px;
+  font-size: 1.3rem;
   font-weight: 700;
   letter-spacing: 2px;
   touch-action: none;
@@ -70,60 +91,20 @@ body.portrait #touch-pad {
   background: #3d2366;
 }
 
-canvas {
-  display: block;
-  width: 100%;
-  height: 100%;
-}
-
-input[type="text"] {
-  user-select: text;
-  -webkit-user-select: text;
-}
-
-/* Segmented control (difficulty selector / records tabs) */
-.seg {
-  width: 100%;
-  display: flex;
-  gap: 4px;
-}
-
-.seg button {
-  flex: 1;
-  padding: 6px 4px;
-  font-family: inherit;
-  font-size: 11px;
-  font-weight: 700;
-  color: #a0a0c0;
-  background: #0a0a1a;
-  border: 2px solid #3d3d6e;
-  border-radius: 3px;
-  cursor: pointer;
-}
-
-.seg button[aria-pressed="true"] {
-  color: #fff;
-  background: #6d28d9;
-  border-color: #a855f7;
-}
-
 /* ===== OVERLAYS ===== */
-/* Fixed to the viewport (not the canvas) so menus fit in portrait too */
+/* Fixed to the viewport (not the canvas) so menus fit in any orientation */
 .overlay {
   position: fixed;
   inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
   background: rgba(0, 0, 0, 0.80);
   z-index: 20;
 }
 
-.hidden {
-  display: none !important;
-}
-
-/* Options panel opens above menu/pause */
+/* Options / tutorial offer / install help open above menu and pause */
 .overlay-top {
   z-index: 25;
 }
@@ -131,21 +112,21 @@ input[type="text"] {
 .panel {
   background: #1a1a2e;
   border: 3px solid #a855f7;
-  border-radius: 6px;
-  padding: 20px 28px;
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
-  min-width: 200px;
-  max-width: 320px;
-  width: 90%;
+  gap: 0.6rem;
+  width: 92%;
+  max-width: 24rem;
   max-height: 96%;
   overflow-y: auto;
   touch-action: pan-y;
   box-shadow: 0 0 30px rgba(168, 85, 247, 0.4);
   color: #fff;
   text-align: center;
+  font-size: 1rem;
 }
 
 .panel-victory {
@@ -153,43 +134,59 @@ input[type="text"] {
   box-shadow: 0 0 30px rgba(255, 215, 0, 0.5);
 }
 
+/* Column groups: stacked by default, side by side on short landscape screens */
+.cols, .col {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.6rem;
+}
+
+@media (orientation: landscape) and (max-height: 560px) {
+  .panel { max-width: 46rem; padding: 0.75rem 1.25rem; }
+  .cols { flex-direction: row; align-items: flex-start; gap: 1.25rem; }
+  .col { flex: 1; min-width: 0; }
+  .title br { display: none; }
+}
+
 /* ===== TYPOGRAPHY ===== */
 .title {
-  font-size: 22px;
+  font-size: 1.75rem;
   font-weight: 900;
   color: #e879f9;
   text-shadow: 2px 2px 0 #7e22ce, 0 0 20px rgba(232,121,249,0.6);
-  line-height: 1.2;
+  line-height: 1.15;
   letter-spacing: 1px;
 }
 
 .subtitle {
-  font-size: 11px;
+  font-size: 0.9rem;
   color: #a0a0c0;
-  margin-top: -4px;
 }
 
 h2 {
-  font-size: 16px;
+  font-size: 1.3rem;
   font-weight: 700;
   letter-spacing: 1px;
 }
 
 .dead-title { color: #f87171; }
-.victory-title { color: #ffd700; font-size: 18px; }
+.victory-title { color: #ffd700; font-size: 1.4rem; }
 
 /* ===== BUTTONS ===== */
 .btn {
-  padding: 8px 20px;
+  min-height: 2.75rem;
+  padding: 0.5rem 1rem;
   font-family: 'Courier New', Courier, monospace;
-  font-size: 12px;
+  font-size: 1rem;
   font-weight: 700;
   letter-spacing: 1px;
   border: 2px solid #555;
   background: #2d2d4e;
   color: #fff;
   cursor: pointer;
-  border-radius: 3px;
+  border-radius: 4px;
   width: 100%;
   transition: background 0.1s, border-color 0.1s;
 }
@@ -215,8 +212,8 @@ h2 {
 }
 
 .btn-small {
-  font-size: 10px;
-  padding: 5px 12px;
+  min-height: 2.4rem;
+  font-size: 0.85rem;
 }
 
 .btn-danger {
@@ -233,59 +230,65 @@ h2 {
   width: 100%;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 10px;
+  align-items: stretch;
+  gap: 0.6rem;
 }
 
 .btn-row {
   width: 100%;
   display: flex;
-  gap: 8px;
+  gap: 0.5rem;
 }
 
 .confirm-text {
-  font-size: 12px;
+  font-size: 1rem;
   color: #fca5a5;
   line-height: 1.4;
 }
 
-/* Collapsible controls help in the pause menu */
-.controls-details {
+/* Segmented control (difficulty selector / records tabs) */
+.seg {
   width: 100%;
-  font-size: 11px;
+  display: flex;
+  gap: 0.3rem;
+}
+
+.seg button {
+  flex: 1;
+  min-height: 2.5rem;
+  padding: 0.3rem 0.2rem;
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 700;
   color: #a0a0c0;
-  text-align: left;
-}
-
-.controls-details summary {
+  background: #0a0a1a;
+  border: 2px solid #3d3d6e;
+  border-radius: 4px;
   cursor: pointer;
-  padding: 4px 0;
 }
 
-.controls-details .controls-hint {
-  border-top: none;
-  padding-top: 4px;
-  text-align: center;
+.seg button[aria-pressed="true"] {
+  color: #fff;
+  background: #6d28d9;
+  border-color: #a855f7;
 }
 
 /* ===== OPTIONS ===== */
 .options-section {
   width: 100%;
-  border-top: 1px solid #333;
-  border-bottom: 1px solid #333;
-  padding: 8px 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 0.6rem;
 }
 
 .option-row {
+  min-height: 2.25rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  font-size: 11px;
-  color: #ccc;
+  gap: 0.6rem;
+  font-size: 1rem;
+  color: #ddd;
   cursor: pointer;
 }
 
@@ -297,14 +300,16 @@ h2 {
 
 .option-row input[type="range"] {
   flex: 1;
+  min-width: 0;
   accent-color: #a855f7;
   cursor: pointer;
 }
 
 .option-row input[type="checkbox"] {
   accent-color: #a855f7;
-  width: 18px;
-  height: 18px;
+  width: 1.3rem;
+  height: 1.3rem;
+  flex: none;
   cursor: pointer;
 }
 
@@ -315,13 +320,14 @@ h2 {
 }
 
 .option-row select {
+  min-height: 2.25rem;
   background: #0a0a1a;
   color: #fff;
   border: 2px solid #555;
-  border-radius: 3px;
+  border-radius: 4px;
   font-family: inherit;
-  font-size: 12px;
-  padding: 3px 6px;
+  font-size: 1rem;
+  padding: 0.2rem 0.4rem;
   cursor: pointer;
 }
 
@@ -332,48 +338,49 @@ h2 {
 
 /* ===== STATS ===== */
 .stats-block {
-  font-size: 11px;
+  font-size: 1rem;
   color: #d0d0e0;
-  line-height: 1.8;
+  line-height: 1.7;
   text-align: left;
   width: 100%;
   background: rgba(0,0,0,0.3);
-  border-radius: 3px;
-  padding: 8px 10px;
+  border-radius: 4px;
+  padding: 0.5rem 0.75rem;
 }
 
 .stats-block .stat-row {
   display: flex;
   justify-content: space-between;
-  gap: 12px;
+  gap: 0.75rem;
 }
 
-.stats-block .stat-label { color: #888; }
+.stats-block .stat-label { color: #999; }
 .stats-block .stat-value { color: #fff; font-weight: 700; }
 
-/* ===== MENU NAME INPUT ===== */
+/* ===== MENU NAME / DIFFICULTY ===== */
 .menu-name-row {
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 0.25rem;
 }
 
 .menu-name-label {
-  font-size: 10px;
+  font-size: 0.85rem;
   color: #a0a0c0;
   text-align: left;
 }
 
 #menu-name-input {
   width: 100%;
+  min-height: 2.5rem;
   background: #0a0a1a;
   border: 2px solid #555;
   color: #fff;
   font-family: 'Courier New', Courier, monospace;
-  font-size: 13px;
-  padding: 5px 10px;
-  border-radius: 3px;
+  font-size: 1.05rem;
+  padding: 0.3rem 0.6rem;
+  border-radius: 4px;
   text-align: center;
 }
 
@@ -384,67 +391,75 @@ h2 {
 
 /* ===== CONTROLS HINT ===== */
 .controls-hint {
-  font-size: 9px;
-  color: #666;
+  font-size: 0.8rem;
+  color: #888;
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  border-top: 1px solid #333;
-  padding-top: 8px;
+  gap: 0.2rem;
   width: 100%;
 }
 
-/* ===== HIGH SCORES ===== */
-.name-entry {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
+/* Touch-only devices have no keyboard: hide key hints there */
+@media (hover: none) and (pointer: coarse) {
+  .hint-keys { display: none; }
 }
 
-.name-entry.hidden { display: none; }
+/* The pad hint only makes sense in portrait */
+.hint-portrait { display: none; }
+body.portrait .hint-portrait { display: block; }
 
-.name-entry p { font-size: 11px; color: #ccc; }
-
-#name-input {
+/* Collapsible controls help in the pause menu */
+.controls-details {
   width: 100%;
-  background: #0a0a1a;
-  border: 2px solid #a855f7;
-  color: #fff;
-  font-family: 'Courier New', Courier, monospace;
-  font-size: 14px;
-  padding: 6px 10px;
-  border-radius: 3px;
+  font-size: 0.9rem;
+  color: #a0a0c0;
+  text-align: left;
+}
+
+.controls-details summary {
+  cursor: pointer;
+  padding: 0.3rem 0;
+}
+
+.controls-details .controls-hint {
+  padding-top: 0.25rem;
   text-align: center;
 }
 
-#name-input:focus { outline: none; border-color: #e879f9; }
-
+/* ===== HIGH SCORES ===== */
 .scores-list {
   width: 100%;
-  font-size: 11px;
+  font-size: 1rem;
 }
 
 .score-entry {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 4px 6px;
+  padding: 0.35rem 0.4rem;
   border-bottom: 1px solid #222;
-  gap: 8px;
+  gap: 0.5rem;
 }
 
 .score-entry:nth-child(1) { color: #ffd700; }
 .score-entry:nth-child(2) { color: #c0c0c0; }
 .score-entry:nth-child(3) { color: #cd7f32; }
 
-.score-rank { color: #666; min-width: 16px; }
-.score-name { flex: 1; }
+.score-rank { color: #666; min-width: 1.4em; }
+.score-name { flex: 1; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .score-pts  { font-weight: 700; }
-.scores-empty { color: #666; font-size: 11px; padding: 8px; }
+.scores-empty { color: #777; padding: 0.5rem; }
 
-/* ===== MOBILE PAUSE BUTTON ===== */
+/* ===== INSTALL HELP (iOS) ===== */
+.install-steps {
+  text-align: left;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: #ddd;
+  padding-left: 1.4rem;
+}
+
+/* ===== PAUSE BUTTON ===== */
 #pause-btn {
   position: absolute;
   top: 6px;
@@ -458,7 +473,7 @@ h2 {
   padding: 3px 8px;
   cursor: pointer;
   z-index: 15;
-  border-radius: 3px;
+  border-radius: 4px;
   display: none;
   line-height: 1;
 }
@@ -469,7 +484,7 @@ h2 {
 
 #pause-btn:hover { background: rgba(100,50,150,0.7); border-color: #a855f7; }
 
-/* Show pause button when game is running (toggled via JS adding class to wrapper) */
+/* Shown while a run is in progress (JS adds .playing to the wrapper) */
 #game-wrapper.playing #pause-btn { display: block; }
 
 /* Skip button, only while the tutorial runs */
@@ -479,14 +494,14 @@ h2 {
   right: 8px;
   z-index: 15;
   display: none;
-  min-height: 36px;
-  padding: 6px 12px;
+  min-height: 44px;
+  padding: 0.4rem 0.8rem;
   background: rgba(0, 0, 0, 0.6);
   border: 1px solid #a855f7;
-  border-radius: 3px;
+  border-radius: 4px;
   color: #fff;
   font-family: inherit;
-  font-size: 11px;
+  font-size: 0.9rem;
   font-weight: 700;
   letter-spacing: 1px;
   cursor: pointer;

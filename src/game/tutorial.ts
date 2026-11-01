@@ -1,4 +1,4 @@
-import { CW, LANE_Y, LANE_GAP, PLAYER_X, SPAWN_AHEAD, RADAR_H } from '../constants';
+import { CW, LANE_Y, LANE_GAP, PLAYER_X, SPAWN_AHEAD, RADAR_H, UI_SCALE } from '../constants';
 import { R } from '../gfx/renderer';
 import { t, type Key } from '../i18n';
 import { audio } from '../audio';
@@ -102,8 +102,9 @@ const PROMPTS: Record<TutorialStep, [Key, Key]> = { // [touch, keys]
 };
 
 function caption(text: string, y: number, color = '#ffffff') {
-  R.rect(0, y - 4, CW, 15, '#000000', 0.45);
-  R.text(text, CW / 2, y, color, { align: 'center' });
+  const s = UI_SCALE;
+  R.rect(0, y - 4, CW, 7 * s + 8, '#000000', 0.45);
+  R.text(text, CW / 2, y, color, { align: 'center', scale: s, maxWidth: CW - 8 });
 }
 
 // Pulsing glow over a lane's tap zone, plus a tap ripple for touch players.
@@ -142,7 +143,7 @@ export function drawTutorial() {
       R.text('↑', x, RADAR_H + 6 + bob, '#ffd700', { align: 'center', scale: 2 });
     }
     if (tut.t >= RADAR_MIN_TIME) {
-      R.text(t(touch ? 'tut.continue.touch' : 'tut.continue.keys'), CW / 2, y + 16, '#aaaacc', { align: 'center' });
+      R.text(t(touch ? 'tut.continue.touch' : 'tut.continue.keys'), CW / 2, y + 7 * UI_SCALE + 8, '#aaaacc', { align: 'center', scale: UI_SCALE, maxWidth: CW - 8 });
     }
   }
 }

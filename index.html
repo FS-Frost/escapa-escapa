@@ -5,13 +5,20 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
   <meta name="theme-color" content="#0a0a0a">
-  <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 9 9' shape-rendering='crispEdges'%3E%3Crect x='1' y='1' width='7' height='7' fill='%23c084fc'/%3E%3Crect x='2' y='3' width='1' height='1' fill='%231a0a2e'/%3E%3Crect x='5' y='3' width='1' height='1' fill='%231a0a2e'/%3E%3Crect x='3' y='6' width='3' height='1' fill='%231a0a2e'/%3E%3C/svg%3E">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Escapa">
+  <!-- Manifest and icons are generated from code at build time (pwa plugin in vite.config.ts) -->
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./icons/icon-192.png" type="image/png">
+  <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
   <title>Escapa Escapa</title>
 </head>
 
-<!-- Visible text comes from src/i18n.ts via data-i18n / data-i18n-placeholder / data-i18n-aria. -->
+<!-- Visible text comes from src/i18n.ts via data-i18n / data-i18n-placeholder / data-i18n-aria.
+     .cols/.col groups stack vertically, and sit side by side on short landscape screens.
+     .hint-keys lines are hidden on touch-only devices. -->
 <body>
   <div id="game-wrapper">
     <canvas id="game"></canvas>
@@ -19,27 +26,35 @@
     <!-- MENU -->
     <div id="overlay-menu" class="overlay">
       <div class="panel">
-        <h1 class="title">Escapa<br>Escapa</h1>
-        <p class="subtitle" data-i18n="menu.subtitle"></p>
-        <div class="menu-name-row">
-          <label for="menu-name-input" class="menu-name-label" data-i18n="menu.nameLabel"></label>
-          <input id="menu-name-input" type="text" maxlength="12" autocomplete="off" data-i18n-placeholder="defaultName">
-        </div>
-        <div class="menu-name-row">
-          <span class="menu-name-label" data-i18n="stats.difficulty"></span>
-          <div id="diff-select" class="seg" role="group">
-            <button data-diff="easy" data-i18n="diff.easy"></button>
-            <button data-diff="normal" data-i18n="diff.normal"></button>
-            <button data-diff="hard" data-i18n="diff.hard"></button>
+        <div class="cols">
+          <div class="col">
+            <h1 class="title">Escapa <br>Escapa</h1>
+            <p class="subtitle" data-i18n="menu.subtitle"></p>
+            <div class="menu-name-row">
+              <label for="menu-name-input" class="menu-name-label" data-i18n="menu.nameLabel"></label>
+              <input id="menu-name-input" type="text" maxlength="12" autocomplete="off" data-i18n-placeholder="defaultName">
+            </div>
+            <div class="menu-name-row">
+              <span class="menu-name-label" data-i18n="stats.difficulty"></span>
+              <div id="diff-select" class="seg" role="group">
+                <button data-diff="easy" data-i18n="diff.easy"></button>
+                <button data-diff="normal" data-i18n="diff.normal"></button>
+                <button data-diff="hard" data-i18n="diff.hard"></button>
+              </div>
+            </div>
           </div>
-        </div>
-        <button id="btn-start" class="btn btn-primary" data-i18n="menu.play"></button>
-        <button id="btn-hiscores-menu" class="btn" data-i18n="menu.records"></button>
-        <button id="btn-options-menu" class="btn" data-i18n="menu.options"></button>
-        <div class="controls-hint">
-          <span data-i18n="controls.tap"></span>
-          <span data-i18n="controls.keys"></span>
-          <span data-i18n="controls.pause"></span>
+          <div class="col">
+            <button id="btn-start" class="btn btn-primary" data-i18n="menu.play"></button>
+            <button id="btn-hiscores-menu" class="btn" data-i18n="menu.records"></button>
+            <button id="btn-options-menu" class="btn" data-i18n="menu.options"></button>
+            <button id="btn-install" class="btn hidden" data-i18n="menu.install"></button>
+            <div class="controls-hint">
+              <span data-i18n="controls.tap"></span>
+              <span class="hint-portrait" data-i18n="controls.pad"></span>
+              <span class="hint-keys" data-i18n="controls.keys"></span>
+              <span class="hint-keys" data-i18n="controls.pause"></span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -48,20 +63,25 @@
     <div id="overlay-pause" class="overlay hidden">
       <div class="panel">
         <h2 data-i18n="pause.title"></h2>
-        <div id="pause-main" class="btn-stack">
-          <button id="btn-resume" class="btn btn-primary" data-i18n="pause.resume"></button>
-          <button id="btn-restart-pause" class="btn" data-i18n="pause.restart"></button>
-          <button id="btn-options-pause" class="btn" data-i18n="menu.options"></button>
-          <details class="controls-details">
-            <summary data-i18n="controls.title"></summary>
-            <div class="controls-hint">
-              <span data-i18n="controls.tap"></span>
-              <span data-i18n="controls.keys"></span>
-              <span data-i18n="controls.pause"></span>
-            </div>
-          </details>
-          <button id="btn-menu-pause" class="btn btn-small" data-i18n="pause.menu"></button>
+        <div id="pause-main" class="cols">
+          <div class="col">
+            <button id="btn-resume" class="btn btn-primary" data-i18n="pause.resume"></button>
+            <button id="btn-options-pause" class="btn" data-i18n="menu.options"></button>
+          </div>
+          <div class="col">
+            <button id="btn-restart-pause" class="btn" data-i18n="pause.restart"></button>
+            <button id="btn-menu-pause" class="btn" data-i18n="pause.menu"></button>
+          </div>
         </div>
+        <details id="pause-controls" class="controls-details">
+          <summary data-i18n="controls.title"></summary>
+          <div class="controls-hint">
+            <span data-i18n="controls.tap"></span>
+            <span class="hint-portrait" data-i18n="controls.pad"></span>
+            <span class="hint-keys" data-i18n="controls.keys"></span>
+            <span class="hint-keys" data-i18n="controls.pause"></span>
+          </div>
+        </details>
         <div id="pause-confirm" class="btn-stack hidden">
           <p id="pause-confirm-text" class="confirm-text"></p>
           <div class="btn-row">
@@ -76,38 +96,42 @@
     <div id="overlay-options" class="overlay overlay-top hidden">
       <div class="panel">
         <h2 data-i18n="opts.title"></h2>
-        <div class="options-section">
-          <label class="option-row">
-            <span data-i18n="opts.language"></span>
-            <select id="sel-lang"></select>
-          </label>
-          <label class="option-row">
-            <span data-i18n="opts.music"></span>
-            <input id="music-slider" type="range" min="0" max="100" value="60">
-          </label>
-          <label class="option-row">
-            <span data-i18n="opts.sfx"></span>
-            <input id="sfx-slider" type="range" min="0" max="100" value="70">
-          </label>
-          <label class="option-row">
-            <input id="chk-mute" type="checkbox">
-            <span data-i18n="opts.mute"></span>
-          </label>
-          <label id="row-vibration" class="option-row">
-            <input id="chk-vibration" type="checkbox">
-            <span data-i18n="opts.vibration"></span>
-          </label>
-          <label class="option-row">
-            <input id="chk-radar" type="checkbox">
-            <span data-i18n="opts.radar"></span>
-          </label>
-          <label class="option-row">
-            <input id="chk-reduce-motion" type="checkbox">
-            <span data-i18n="opts.reduceMotion"></span>
-          </label>
+        <div class="cols">
+          <div class="col options-section">
+            <label class="option-row">
+              <span data-i18n="opts.language"></span>
+              <select id="sel-lang"></select>
+            </label>
+            <label class="option-row">
+              <span data-i18n="opts.music"></span>
+              <input id="music-slider" type="range" min="0" max="100" value="60">
+            </label>
+            <label class="option-row">
+              <span data-i18n="opts.sfx"></span>
+              <input id="sfx-slider" type="range" min="0" max="100" value="70">
+            </label>
+            <label class="option-row">
+              <input id="chk-mute" type="checkbox">
+              <span data-i18n="opts.mute"></span>
+            </label>
+          </div>
+          <div class="col options-section">
+            <label id="row-vibration" class="option-row">
+              <input id="chk-vibration" type="checkbox">
+              <span data-i18n="opts.vibration"></span>
+            </label>
+            <label class="option-row">
+              <input id="chk-radar" type="checkbox">
+              <span data-i18n="opts.radar"></span>
+            </label>
+            <label class="option-row">
+              <input id="chk-reduce-motion" type="checkbox">
+              <span data-i18n="opts.reduceMotion"></span>
+            </label>
+            <button id="btn-fullscreen" class="btn btn-small"></button>
+            <button id="btn-tutorial" class="btn btn-small" data-i18n="opts.tutorial"></button>
+          </div>
         </div>
-        <button id="btn-fullscreen" class="btn"></button>
-        <button id="btn-tutorial" class="btn" data-i18n="opts.tutorial"></button>
         <button id="btn-close-options" class="btn btn-primary" data-i18n="opts.back"></button>
       </div>
     </div>
@@ -122,13 +146,30 @@
       </div>
     </div>
 
+    <!-- INSTALL HELP (iOS has no install prompt: explain Add to Home Screen) -->
+    <div id="overlay-install-ios" class="overlay overlay-top hidden">
+      <div class="panel">
+        <h2 data-i18n="install.iosTitle"></h2>
+        <ol class="install-steps">
+          <li data-i18n="install.iosStep1"></li>
+          <li data-i18n="install.iosStep2"></li>
+          <li data-i18n="install.iosStep3"></li>
+        </ol>
+        <button id="btn-install-ios-close" class="btn btn-primary" data-i18n="records.close"></button>
+      </div>
+    </div>
+
     <!-- DEAD -->
     <div id="overlay-dead" class="overlay hidden">
       <div class="panel">
         <h2 id="dead-title" class="dead-title"></h2>
-        <div id="dead-stats" class="stats-block"></div>
-        <button id="btn-restart-dead" class="btn btn-primary" data-i18n="dead.retry"></button>
-        <button id="btn-menu-dead" class="btn" data-i18n="pause.menu"></button>
+        <div class="cols">
+          <div class="col"><div id="dead-stats" class="stats-block"></div></div>
+          <div class="col">
+            <button id="btn-restart-dead" class="btn btn-primary" data-i18n="dead.retry"></button>
+            <button id="btn-menu-dead" class="btn" data-i18n="pause.menu"></button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -136,9 +177,13 @@
     <div id="overlay-victory" class="overlay hidden">
       <div class="panel panel-victory">
         <h2 id="victory-title" class="victory-title"></h2>
-        <div id="victory-stats" class="stats-block"></div>
-        <button id="btn-restart-victory" class="btn btn-primary" data-i18n="victory.again"></button>
-        <button id="btn-menu-victory" class="btn" data-i18n="pause.menu"></button>
+        <div class="cols">
+          <div class="col"><div id="victory-stats" class="stats-block"></div></div>
+          <div class="col">
+            <button id="btn-restart-victory" class="btn btn-primary" data-i18n="victory.again"></button>
+            <button id="btn-menu-victory" class="btn" data-i18n="pause.menu"></button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -164,7 +209,7 @@
       </div>
     </div>
 
-    <!-- Mobile pause button -->
+    <!-- Pause / tutorial-skip buttons over the canvas -->
     <button id="pause-btn" data-i18n-aria="pause.aria">⏸</button>
     <button id="tutorial-skip" data-i18n="tut.skip"></button>
   </div>

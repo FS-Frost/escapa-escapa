@@ -317,6 +317,16 @@ Keys are unchanged from v1. Options missing newer fields fall back to defaults, 
 ## Mobile
 
 - Both orientations; see Coordinate System & Layout. Rotating mid-run keeps playing.
+- DOM menus use `rem` sizes on a fluid root font size and switch to two columns (`.cols`) on short landscape screens, so they fit without scrolling. Keyboard hints are hidden on touch-only devices.
+- Small canvas HUD text is drawn at `UI_SCALE` (2× on phones) with `maxWidth` auto-shrink.
+
+---
+
+## PWA
+
+- `scripts/pwa-plugin.ts` runs at build time. It draws the icons from code (the player cube on a dark background, 192/512 px, a maskable 512 and a 180 px Apple touch icon), encodes them as PNG with a small built-in encoder (zlib), and emits `manifest.webmanifest` (fullscreen, any orientation) and `sw.js`.
+- `sw.js` precaches the exact build output. Page loads are network-first (updates arrive) with the cached shell as offline fallback; other assets are cache-first. The cache name is a hash of the build, so a new deploy installs a fresh cache and drops the old one.
+- `src/pwa.ts` registers the service worker (production only) and drives the install button: Chromium's `beforeinstallprompt` is deferred and replayed from "📲 Instalar app"; on iOS Safari the button opens Add-to-Home-Screen steps; nothing is shown when already installed.
 - The layout respects safe-area insets (`viewport-fit=cover` + body padding).
 - The pause button grows to 44 px on coarse pointers; the HUD hearts and the radar scale end left of it (`PAUSE_BTN_INSET`).
 

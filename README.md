@@ -19,6 +19,8 @@ npm run preview   # serve the production build
 
 Pushing to `main` deploys to GitHub Pages automatically (`.github/workflows/deploy.yml`).
 
+`npm run build` also generates the PWA icons, manifest and service worker (`scripts/pwa-plugin.ts`).
+
 ## Controls
 
 | Action | Touch / mouse | Keyboard |
@@ -64,6 +66,7 @@ Jumping from the bottom to the top lane is a single arc; obstacles in the middle
 - **Spanish / English**, auto-detected and switchable
 - **Options** (from the main menu and pause): language, music and effects volume, mute, vibration, radar, reduce motion, fullscreen
 - **Any screen, any orientation**: landscape widens the world to fill the screen; portrait shows the game on top and a lane pad below; rotating mid-run just adapts. Safe areas respected, auto-pause when the app is hidden
+- **Installable app (PWA)**: works offline; "📲 Install app" appears in the menu when the browser supports it (on iPhone it shows the Add-to-Home-Screen steps). Icons are generated from code at build time
 
 ## Achievements
 

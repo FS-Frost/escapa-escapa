@@ -13,6 +13,8 @@ npm run preview   # serve dist/
 
 Deploy: `.github/workflows/deploy.yml` builds and publishes to GitHub Pages on every push to `main` → https://fs-frost.github.io/escapa-escapa/. `vite.config.ts` uses `base: './'` so the build works under the Pages sub-path.
 
+PWA: `scripts/pwa-plugin.ts` (Vite plugin) draws the app icons from code (the player cube), encodes them as PNG, and emits `manifest.webmanifest` and `sw.js` with the exact build output to precache (cache version = hash of the build). The dev server serves the manifest and icons; the service worker is only registered in production (`src/pwa.ts`). Never commit icon files.
+
 ## Layout
 
 ```
@@ -24,7 +26,9 @@ src/storage.ts          — The only localStorage access point
 src/audio.ts            — Web Audio synth SFX + procedural music (theme per biome, step sequencer)
 src/haptics.ts          — Vibration API patterns
 src/input.ts            — Keyboard, tap-to-lane pointer input, auto-pause hooks
-src/ui.ts               — setState(), overlays, options panel, pause confirm, results
+src/ui.ts               — setState(), overlays, options panel, pause confirm, results, install button
+src/pwa.ts              — Service worker registration + install offer (beforeinstallprompt / iOS help)
+scripts/pwa-plugin.ts   — Build-time icons (PNG from code), manifest and service worker
 src/style.css           — Overlay/panel styles, touch/safe-area handling, portrait pad
 src/gfx/renderer.ts     — Batched WebGL2 renderer (`R`): rect, gradientV, tri, circle, radial, line, text
 src/gfx/pixelFont.ts    — Procedural 5×7 bitmap font (uppercase + accents + ♥ ★)
@@ -46,7 +50,7 @@ src/game/tutorial.ts    — Interactive tutorial steps (up → down → radar �
 - Everything is drawn through `R` (`src/gfx/renderer.ts`) into a CW×270 framebuffer (CW follows the screen aspect), then a present pass upscales it to the screen with nearest filtering. Post-processing effects belong in that present pass (`PRESENT_FS`).
 - `R` is canvas-like but minimal: `save/restore/translate` and `R.alpha` (multiplied into every draw). No rotation/scale.
 - **Logical size:** height is always `CH = 270`; width `CW` is set by `layout()` (`main.ts`) from the screen aspect, clamped to `[MIN_CW, MAX_CW]` = [320, 640] (320 in portrait). `CW`, `PORTRAIT` and `PAUSE_INSET` are `export let` live bindings updated on resize/rotation: always read them at runtime, never cache them in module-level constants. Anything spanning the screen must scale with `CW` (e.g. `fill()` counts in `biomes.ts`).
-- Text is **only** the pixel font via `R.text(str, x, y, color, { scale, align, baseline, shadow })`. Unknown characters render as `?`; add glyphs to `pixelFont.ts` (emoji are not supported on canvas — use them only in DOM).
+- Text is **only** the pixel font via `R.text(str, x, y, color, { scale, align, baseline, shadow, maxWidth })`. Small HUD text uses `scale: UI_SCALE` (2 when a logical pixel is under 2.2 CSS px, i.e. phones) and `maxWidth` so it shrinks instead of overflowing. Unknown characters render as `?`; add glyphs to `pixelFont.ts` (emoji are not supported on canvas — use them only in DOM).
 
 ## Important Invariants
 
@@ -65,6 +69,9 @@ src/game/tutorial.ts    — Interactive tutorial steps (up → down → radar �
 - **Respect options:** `world.opts.reduceMotion` disables shake, hit flash and speed lines; haptics only fire if `opts.vibration` and the API exists.
 
 ## Design Decisions
+
+- **DOM UI scales with the screen:** sizes are in `rem` on a fluid root size (`clamp(16px, 2.2vmin + 8px, 22px)`); buttons are ≥ 44 px. Panels group content in `.cols > .col`, stacked by default and side by side on short landscape screens (`max-height: 560px`). Keyboard-only hints carry `.hint-keys` (hidden on touch-only devices); `.hint-portrait` only shows in portrait.
+- **Install offer:** "📲 Instalar app" in the main menu appears only when installable (Chromium `beforeinstallprompt`) or on iOS Safari (opens Add-to-Home-Screen help); hidden when already installed.
 
 - **Touch input = tap-to-lane:** `pointerdown` anywhere on the page (letterbox bars included) jumps to the lane nearest to the touch Y. No swipe/drag. Keyboard ↑/Space/↓ steps one lane.
 - **Control feedback:** right-edge lane tabs (target lane lit), a brief glow over the chosen lane's tap zone (`world.laneFlash`, set in `moveToLane`) and a landing outline while jumping. On-screen buttons only in portrait (the lane pad).

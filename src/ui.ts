@@ -1,3 +1,4 @@
+import { initPwa, installMode, promptInstall } from './pwa';
 import { audio } from './audio';
 import { haptics } from './haptics';
 import { storage } from './storage';
@@ -49,7 +50,8 @@ export function pauseIfPlaying() {
 
 // Escape backs out of the innermost layer: tutorial offer / options → confirm → pause toggle.
 export function handleEscape() {
-  if (!$('overlay-tutorial-offer').classList.contains('hidden')) show('overlay-tutorial-offer', false);
+  if (!$('overlay-install-ios').classList.contains('hidden')) show('overlay-install-ios', false);
+  else if (!$('overlay-tutorial-offer').classList.contains('hidden')) show('overlay-tutorial-offer', false);
   else if (isOptionsOpen()) closeOptions();
   else if (!$('pause-confirm').classList.contains('hidden')) hideConfirm();
   else togglePause();
@@ -88,12 +90,14 @@ function askConfirm(textKey: Key, action: () => void) {
   pendingAction = action;
   $('pause-confirm-text').textContent = t(textKey);
   show('pause-main', false);
+  show('pause-controls', false);
   show('pause-confirm', true);
 }
 
 function hideConfirm() {
   pendingAction = null;
   show('pause-main', true);
+  show('pause-controls', true);
   show('pause-confirm', false);
 }
 
@@ -292,4 +296,14 @@ export function bindUI() {
   click('btn-fullscreen', () => void toggleFullscreen());
   document.addEventListener('fullscreenchange', syncFullscreenLabel);
   click('btn-close-options', closeOptions);
+
+  // Install offer: native prompt where supported, Add-to-Home-Screen help on iOS
+  const syncInstall = () => show('btn-install', installMode() !== null);
+  initPwa(syncInstall);
+  click('btn-install', async () => {
+    if (installMode() === 'ios') show('overlay-install-ios', true);
+    else await promptInstall();
+    syncInstall();
+  });
+  click('btn-install-ios-close', () => show('overlay-install-ios', false));
 }

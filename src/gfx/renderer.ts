@@ -49,7 +49,8 @@ const MAX_VERTS = 6 * 8192;
 
 export type Align = 'left' | 'center' | 'right';
 export type Baseline = 'top' | 'middle' | 'bottom';
-export interface TextOpts { scale?: number; align?: Align; baseline?: Baseline; shadow?: Color | null; }
+// maxWidth: shrink the scale (down to 1) until the text fits.
+export interface TextOpts { scale?: number; align?: Align; baseline?: Baseline; shadow?: Color | null; maxWidth?: number; }
 export type GradientStop = readonly [number, Color];
 
 const TEXT_SHADOW = 'rgba(0,0,0,0.65)';
@@ -290,9 +291,12 @@ export class Renderer {
   // is the cap top; accents extend above it. Optional 1-font-pixel drop shadow.
   text(str: string, x: number, y: number, color: Color, opts: TextOpts = {}) {
     if (!str) return;
-    const { scale = 1, align = 'left', baseline = 'top', shadow = TEXT_SHADOW } = opts;
+    const { align = 'left', baseline = 'top', shadow = TEXT_SHADOW, maxWidth } = opts;
+    let scale = opts.scale ?? 1;
+    const base = measure(str);
+    if (maxWidth) while (scale > 1 && base * scale > maxWidth) scale--;
     let dx = x, dy = y;
-    const w = measure(str) * scale;
+    const w = base * scale;
     if (align === 'center') dx -= w / 2;
     else if (align === 'right') dx -= w;
     if (baseline === 'middle') dy -= CAP * scale / 2;

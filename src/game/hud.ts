@@ -1,4 +1,4 @@
-import { CW, CH, RADAR_H, LANE_COUNT, LANE_GAP, LANE_Y, P, SPAWN_AHEAD, PAUSE_INSET } from '../constants';
+import { CW, CH, RADAR_H, LANE_COUNT, LANE_GAP, LANE_Y, P, SPAWN_AHEAD, PAUSE_INSET, UI_SCALE } from '../constants';
 import { LANE_FLASH_DUR } from './player';
 import { R } from '../gfx/renderer';
 import { world, displayName } from './world';
@@ -50,13 +50,15 @@ const heartsLeftX = () => CW - PAUSE_INSET - (world.player.maxHp - 1) * HEART_ST
 
 export function drawHUD() {
   const { player, score, hiScore } = world;
+  const s = UI_SCALE;
   R.text(`${score}`, 6, RADAR_H + 5, '#ffffff', { scale: 2 });
 
+  const multY = RADAR_H + 23, streakY = multY + 7 * s + 3;
   if (player.comboMultiplier > 1) {
-    R.text(`x${player.comboMultiplier}`, 6, RADAR_H + 23, MULT_COLORS[player.comboMultiplier]);
+    R.text(`x${player.comboMultiplier}`, 6, multY, MULT_COLORS[player.comboMultiplier], { scale: s });
   }
   if (player.comboStreak > 0) {
-    R.text(t('hud.streak', { n: player.comboStreak }), 6, RADAR_H + 33, '#88ddff');
+    R.text(t('hud.streak', { n: player.comboStreak }), 6, streakY, '#88ddff', { scale: s });
   }
 
   const hx = CW - PAUSE_INSET;
@@ -65,13 +67,16 @@ export function drawHUD() {
   }
   const heartsLeft = heartsLeftX();
   // Narrow screens (portrait) drop the name before it collides with the goal bar
-  if (CW >= NAME_MIN_CW) R.text(displayName(), heartsLeft - 4, RADAR_H + 9, '#aaaacc', { align: 'right' });
+  if (CW >= NAME_MIN_CW) {
+    R.text(displayName(), heartsLeft - 4, RADAR_H + 12 - 3.5 * s, '#aaaacc', { align: 'right', scale: s, maxWidth: 100 });
+  }
 
   if (world.goalApproaching) drawGoalProgress(heartsLeft);
 
   if (score >= hiScore && score > 0) {
     // Sits above the achievement banner while it is showing
-    R.text(t('hud.newRecord'), CW / 2, world.achievementBanner ? CH - 38 : CH - 9, '#ffd700', { align: 'center' });
+    const y = world.achievementBanner ? CH - 31 - 7 * s : CH - 2 - 7 * s;
+    R.text(t('hud.newRecord'), CW / 2, y, '#ffd700', { align: 'center', scale: s, maxWidth: CW - 16 });
   }
 }
 
@@ -97,7 +102,7 @@ function drawGoalProgress(heartsLeft: number) {
   if (goalTimer < GOAL_NOTICE_S) {
     R.save();
     R.alpha *= Math.min(1, (GOAL_NOTICE_S - goalTimer) / 0.5);
-    R.text(t('hud.goal'), BAR_X + BAR_W / 2, BAR_Y + 9, '#ffb000', { align: 'center' });
+    R.text(t('hud.goal'), BAR_X + BAR_W / 2, BAR_Y + 9, '#ffb000', { align: 'center', scale: UI_SCALE, maxWidth: space });
     R.restore();
   }
 }
@@ -127,7 +132,7 @@ export function drawComboPopups() {
   for (const p of world.comboPopups) {
     R.save();
     R.alpha *= Math.min(1, p.life / p.maxLife * 2);
-    R.text(p.text, p.x, p.y, p.color, { scale: 2, align: 'center', baseline: 'middle' });
+    R.text(p.text, p.x, p.y, p.color, { scale: 1 + UI_SCALE, align: 'center', baseline: 'middle', maxWidth: CW - 16 });
     R.restore();
   }
 }
@@ -147,7 +152,7 @@ export function drawAchievementBanner() {
   R.alpha *= Math.min(1, b.life / b.maxLife * 3);
   R.rect(0, CH - 28, CW, 22, '#7c3aed');
   R.strokeRect(0, CH - 28, CW, 22, '#ffd700');
-  R.text('★ ' + t('hud.achievement', { name: b.text }), CW / 2, CH - 17, '#ffffff', { align: 'center', baseline: 'middle' });
+  R.text('★ ' + t('hud.achievement', { name: b.text }), CW / 2, CH - 17, '#ffffff', { align: 'center', baseline: 'middle', scale: UI_SCALE, maxWidth: CW - 8 });
   R.restore();
 }
 

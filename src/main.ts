@@ -13,6 +13,8 @@ const wrapper = document.getElementById('game-wrapper')!;
 // Portrait keeps at least this share of the height for the lane pad.
 const PAD_MIN_SHARE = 0.38;
 const PAUSE_BTN_MARGIN = 10; // css px: its right offset + a little air
+// Below this many CSS px per logical px, HUD text is drawn at double size.
+const SMALL_PIXEL_CSS = 2.2;
 
 // Fit the game to the safe area. Logical height stays CH; logical width
 // follows the screen aspect (clamped), so landscape phones see more road
@@ -45,7 +47,8 @@ function layout(r: Renderer) {
   const pauseBtn = document.getElementById('pause-btn')!;
   // Button is hidden in menus (offsetWidth 0): fall back to its CSS min size.
   const pauseCss = (pauseBtn.offsetWidth || 44) + PAUSE_BTN_MARGIN;
-  setView(logicalW, portrait, Math.ceil(pauseCss * logicalW / w));
+  const cssPerPx = w / logicalW;
+  setView(logicalW, portrait, Math.ceil(pauseCss / cssPerPx), cssPerPx < SMALL_PIXEL_CSS ? 2 : 1);
   document.body.classList.toggle('portrait', portrait);
   wrapper.style.width = w + 'px';
   wrapper.style.height = h + 'px';
