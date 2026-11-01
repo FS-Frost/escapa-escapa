@@ -13,6 +13,9 @@ const TRACKS: { id: Theme; name: Key; lockHint?: Key }[] = [
   { id: 'city', name: 'track.city' },
   { id: 'forest', name: 'track.forest', lockHint: 'juke.lockedForest' },
   { id: 'sky', name: 'track.sky', lockHint: 'juke.lockedSky' },
+  { id: 'cave', name: 'track.cave', lockHint: 'juke.lockedCave' },
+  { id: 'volcano', name: 'track.volcano', lockHint: 'juke.lockedVolcano' },
+  { id: 'desert', name: 'track.desert', lockHint: 'juke.lockedDesert' },
 ];
 const LOOPS_PER_TRACK = 4;
 const VIZ_BARS = 16;

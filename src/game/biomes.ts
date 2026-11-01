@@ -3,13 +3,15 @@ import { R } from '../gfx/renderer';
 import { rgba } from '../gfx/color';
 import { world } from './world';
 import { storage } from '../storage';
+import { t } from '../i18n';
 
 export const BIOMES = [
-  { scoreStart: 0, name: 'city' },
-  { scoreStart: 34, name: 'forest' },
-  { scoreStart: 67, name: 'sky' },
+  { name: 'city' }, { name: 'forest' }, { name: 'sky' },
+  { name: 'cave' }, { name: 'volcano' }, { name: 'desert' },
 ] as const;
-type BiomeName = typeof BIOMES[number]['name'];
+export type BiomeName = typeof BIOMES[number]['name'];
+// Endless/daily: distance (px) spent in each biome before moving to the next.
+export const BIOME_LEN = 4500;
 
 const GROUND = CH - 28;
 
@@ -147,12 +149,96 @@ function drawSky(off: number) {
   R.restore();
 }
 
-const DRAW: Record<BiomeName, (off: number) => void> = { city: drawCity, forest: drawForest, sky: drawSky };
+// ===== CAVE: stalactites, glowing crystals (darkness is drawn over it) =====
+function drawCave(off: number) {
+  R.gradientV(0, RADAR_H, CW, CH - RADAR_H, [[0, '#07060d'], [1, '#1a1226']]);
+  const t = world.gameTime;
+  for (let i = 0; i < fill(46); i++) {
+    const x = Math.floor(wrap(i * 46 - off * 0.15, 46));
+    const len = 18 + Math.floor(hash(i * 7) * 40);
+    R.tri(x, RADAR_H, x + 18, RADAR_H, x + 9, RADAR_H + len, '#14101f');
+  }
+  for (let i = 0; i < fill(70); i++) {
+    const x = Math.floor(wrap(i * 70 + 20 - off * 0.35, 70));
+    const h = 20 + Math.floor(hash(i * 3 + 1) * 30);
+    R.tri(x, GROUND, x + 22, GROUND, x + 11, GROUND - h, '#1e1730');
+    const c = i % 2 ? '#22d3ee' : '#c084fc';
+    const glow = 0.5 + 0.5 * Math.sin(t * 2 + i);
+    R.rect(x + 28, GROUND - 10, 4, 10, c, 0.5 + 0.5 * glow);
+    R.rect(x + 34, GROUND - 6, 3, 6, c, 0.4 + 0.4 * glow);
+  }
+  R.rect(0, GROUND, CW, 28, '#231b2e');
+  R.rect(0, GROUND, CW, 3, '#3a2d4a');
+  for (let i = 0; i < fill(30); i++) {
+    const x = Math.floor(wrap(i * 30 - off * 0.7, 30));
+    R.rect(x, GROUND + 8 + (i % 3) * 5, 6, 3, '#2f2540');
+  }
+}
+
+// ===== VOLCANO: red sky, distant volcanoes, falling ash, glowing cracks =====
+function drawVolcano(off: number) {
+  R.gradientV(0, RADAR_H, CW, CH - RADAR_H, [[0, '#1a0505'], [0.6, '#4a1206'], [1, '#7a2a0a']]);
+  const t = world.gameTime;
+  for (let i = 0; i < fill(220); i++) {
+    const x = Math.floor(wrap(i * 220 - off * 0.08, 220));
+    const peak = GROUND - 110 - Math.floor(hash(i * 11) * 30);
+    R.tri(x, GROUND, x + 110, peak, x + 220, GROUND, '#2a0c08');
+    R.rect(x + 100, peak, 20, 4, '#ff5a1f', 0.6 + 0.4 * Math.sin(t * 3 + i));
+    R.rect(x + 106, peak + 4, 4, 30, '#ff5a1f', 0.35);
+  }
+  for (let i = 0; i < fill(90); i++) {
+    const x = Math.floor(wrap(i * 90 + 40 - off * 0.3, 90));
+    R.tri(x, GROUND, x + 30, GROUND - 26, x + 60, GROUND, '#1c0907');
+  }
+  for (let i = 0; i < 30; i++) {
+    const x = ((i * 53 - off * 0.25) % CW + CW) % CW;
+    const y = RADAR_H + ((t * (14 + (i % 4) * 4) + i * 37) % (GROUND - RADAR_H));
+    R.rect(Math.floor(x), Math.floor(y), 2, 2, '#8a6a64', 0.6);
+  }
+  R.rect(0, GROUND, CW, 28, '#1c1412');
+  R.rect(0, GROUND, CW, 3, '#2e1f1b');
+  for (let i = 0; i < fill(64); i++) {
+    const x = Math.floor(wrap(i * 64 - off * 0.7, 64));
+    R.rect(x, GROUND + 10, 18, 2, '#ff5a1f', 0.45 + 0.35 * Math.sin(t * 4 + i));
+    R.rect(x + 14, GROUND + 12, 2, 6, '#ff5a1f', 0.4);
+  }
+}
+
+// ===== DESERT: dusk sky, low sun, dunes, cacti =====
+function drawDesert(off: number) {
+  R.gradientV(0, RADAR_H, CW, CH - RADAR_H, [[0, '#2d1b4e'], [0.55, '#b5523b'], [1, '#e8a35a']]);
+  R.circle(Math.floor(CW * 0.72 - (off * 0.02) % 40), GROUND - 70, 26, '#ffcf70');
+  for (let i = 0; i < fill(180); i++) {
+    const x = Math.floor(wrap(i * 180 - off * 0.1, 180));
+    R.circle(x + 90, GROUND + 30, 110, '#a8553a', Math.PI, Math.PI * 2);
+  }
+  for (let i = 0; i < fill(120); i++) {
+    const x = Math.floor(wrap(i * 120 + 50 - off * 0.3, 120));
+    R.circle(x + 60, GROUND + 20, 70, '#c46b3f', Math.PI, Math.PI * 2);
+  }
+  for (let i = 0; i < fill(150); i++) {
+    const x = Math.floor(wrap(i * 150 + 30 - off * 0.45, 150));
+    const h = 24 + (i % 3) * 8;
+    R.rect(x, GROUND - h, 6, h, '#3d5a2a');
+    R.rect(x - 6, GROUND - h + 8, 6, 3, '#3d5a2a'); R.rect(x - 6, GROUND - h + 2, 3, 8, '#3d5a2a');
+    R.rect(x + 6, GROUND - h + 12, 6, 3, '#3d5a2a'); R.rect(x + 9, GROUND - h + 5, 3, 9, '#3d5a2a');
+  }
+  R.rect(0, GROUND, CW, 28, '#d99a5b');
+  R.rect(0, GROUND, CW, 3, '#e9b77a');
+  for (let i = 0; i < fill(40); i++) {
+    const x = Math.floor(wrap(i * 40 - off * 0.7, 40));
+    R.rect(x, GROUND + 9 + (i % 2) * 7, 16, 1, '#c4864a');
+  }
+}
+
+const DRAW: Record<BiomeName, (off: number) => void> = {
+  city: drawCity, forest: drawForest, sky: drawSky, cave: drawCave, volcano: drawVolcano, desert: drawDesert,
+};
 
 function drawBiome(index: number, alpha: number) {
   R.save();
   R.alpha *= alpha;
-  DRAW[BIOMES[Math.min(index, BIOMES.length - 1)].name](world.worldX);
+  DRAW[BIOMES[index].name](world.worldX);
   R.restore();
 }
 
@@ -171,17 +257,40 @@ export function drawBackground() {
   }
 }
 
+// How much of biome `name` is on screen (crossfades count partially).
+export function biomeWeight(name: BiomeName): number {
+  const bt = world.biomeTransition;
+  if (!bt) return BIOMES[world.currentBiome].name === name ? 1 : 0;
+  return (BIOMES[bt.from].name === name ? 1 - bt.t : 0) + (BIOMES[bt.to].name === name ? bt.t : 0);
+}
+
 // Music theme for the biome being shown (or faded into); names match MusicSection.
 export function biomeTheme(): BiomeName {
-  const i = world.biomeTransition?.to ?? world.currentBiome;
-  return BIOMES[Math.min(i, BIOMES.length - 1)].name;
+  return BIOMES[world.biomeTransition?.to ?? world.currentBiome].name;
+}
+
+// Biome the run should be in: stages have one; endless/daily cycle by distance.
+export function targetBiome(): number {
+  if (world.tutorial) return 0;
+  if (world.stage) return world.stage.biome;
+  return Math.floor(world.worldX / BIOME_LEN) % BIOMES.length;
+}
+
+// First time a biome shows up in a run: unlock its track and announce it
+// (name + what its mechanic is) so new hazards never come unexplained.
+export function enterBiome(index: number) {
+  const name = BIOMES[index].name;
+  storage.unlockTrack(name);
+  if (world.tutorial || world.seenBiomes.has(index)) return;
+  world.seenBiomes.add(index);
+  world.caption = { title: t(`biome.${name}`), sub: t(`mech.${name}`), life: 3.2, maxLife: 3.2, color: '#ffd166' };
 }
 
 export function updateBiomes(dt: number) {
-  const newBiome = BIOMES.reduce((cur, b, i) => world.score >= b.scoreStart ? i : cur, 0);
-  if (newBiome !== world.currentBiome && !world.biomeTransition) {
-    world.biomeTransition = { from: world.currentBiome, to: newBiome, t: 0, dur: 3.0 };
-    storage.unlockTrack(BIOMES[newBiome].name); // jukebox: reaching a biome unlocks its theme
+  const target = targetBiome();
+  if (target !== world.currentBiome && !world.biomeTransition) {
+    world.biomeTransition = { from: world.currentBiome, to: target, t: 0, dur: 3.0 };
+    enterBiome(target);
   }
   const bt = world.biomeTransition;
   if (bt) {

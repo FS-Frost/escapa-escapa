@@ -45,9 +45,12 @@
           </div>
           <div class="col">
             <button id="btn-start" class="btn btn-primary" data-i18n="menu.play"></button>
-            <button id="btn-hiscores-menu" class="btn" data-i18n="menu.records"></button>
-            <button id="btn-options-menu" class="btn" data-i18n="menu.options"></button>
-            <button id="btn-jukebox-menu" class="btn" data-i18n="menu.jukebox"></button>
+            <div class="menu-grid">
+              <button id="btn-hiscores-menu" class="btn btn-small" data-i18n="menu.records"></button>
+              <button id="btn-options-menu" class="btn btn-small" data-i18n="menu.options"></button>
+              <button id="btn-jukebox-menu" class="btn btn-small" data-i18n="menu.jukebox"></button>
+              <button id="btn-skins-menu" class="btn btn-small" data-i18n="menu.skins"></button>
+            </div>
             <button id="btn-install" class="btn hidden" data-i18n="menu.install"></button>
             <div class="controls-hint">
               <span data-i18n="controls.tap"></span>
@@ -168,6 +171,36 @@
       </div>
     </div>
 
+    <!-- MODE SELECT (JUGAR) -->
+    <div id="overlay-modes" class="overlay overlay-top hidden">
+      <div class="panel">
+        <h2 data-i18n="modes.title"></h2>
+        <button id="btn-mode-stages" class="btn btn-primary mode-btn"><span data-i18n="modes.stages"></span><small id="modes-stages-sub"></small></button>
+        <button id="btn-mode-endless" class="btn mode-btn"><span data-i18n="modes.endless"></span><small id="modes-endless-sub"></small></button>
+        <button id="btn-mode-daily" class="btn mode-btn"><span data-i18n="modes.daily"></span><small id="modes-daily-sub"></small></button>
+        <button id="btn-modes-back" class="btn btn-small" data-i18n="opts.back"></button>
+      </div>
+    </div>
+
+    <!-- STAGE SELECT -->
+    <div id="overlay-stages" class="overlay overlay-top hidden">
+      <div class="panel panel-wide">
+        <h2 data-i18n="stages.title"></h2>
+        <div id="stage-grid" class="stage-grid"></div>
+        <button id="btn-stages-back" class="btn btn-small" data-i18n="opts.back"></button>
+      </div>
+    </div>
+
+    <!-- SKINS -->
+    <div id="overlay-skins" class="overlay overlay-top hidden">
+      <div class="panel panel-wide">
+        <h2 data-i18n="skins.title"></h2>
+        <p id="skins-wallet" class="subtitle"></p>
+        <div id="skin-grid" class="skin-grid"></div>
+        <button id="btn-skins-back" class="btn btn-small" data-i18n="opts.back"></button>
+      </div>
+    </div>
+
     <!-- TUTORIAL OFFER (first time JUGAR is pressed) -->
     <div id="overlay-tutorial-offer" class="overlay overlay-top hidden">
       <div class="panel">
@@ -195,6 +228,7 @@
     <div id="overlay-dead" class="overlay hidden">
       <div class="panel">
         <h2 id="dead-title" class="dead-title"></h2>
+        <p id="dead-note" class="victory-note hidden"></p>
         <div class="cols">
           <div class="col"><div id="dead-stats" class="stats-block"></div></div>
           <div class="col">
@@ -209,10 +243,15 @@
     <div id="overlay-victory" class="overlay hidden">
       <div class="panel panel-victory">
         <h2 id="victory-title" class="victory-title"></h2>
+        <div id="victory-stars" class="stars-row"></div>
         <div class="cols">
-          <div class="col"><div id="victory-stats" class="stats-block"></div></div>
           <div class="col">
-            <button id="btn-restart-victory" class="btn btn-primary" data-i18n="victory.again"></button>
+            <div id="victory-stats" class="stats-block"></div>
+          </div>
+          <div class="col">
+            <ul id="victory-star-list" class="star-list"></ul>
+            <button id="btn-next-stage" class="btn btn-primary" data-i18n="victory.next"></button>
+            <button id="btn-restart-victory" class="btn" data-i18n="victory.replay"></button>
             <button id="btn-menu-victory" class="btn" data-i18n="pause.menu"></button>
           </div>
         </div>

@@ -4,6 +4,8 @@ import { createPlayer, type Player } from './player';
 import type { Obstacle, Goal } from './obstacles';
 import type { Particle } from './particles';
 import type { Tutorial } from './tutorial';
+import type { RunMode, StageDef } from './stages';
+import type { Difficulty } from './difficulty';
 import type { Color } from '../gfx/color';
 import { t } from '../i18n';
 
@@ -14,6 +16,10 @@ export interface ComboPopup { text: string; x: number; y: number; life: number; 
 export interface Banner { text: string; life: number; maxLife: number; }
 export interface BiomeTransition { from: number; to: number; t: number; dur: number; }
 export interface LaneFlash { lane: number; life: number; }
+export interface Beam { lane: number; t: number; hit: boolean; done: boolean; }
+export type PowerKind = 'shield' | 'magnet' | 'slowmo';
+export interface ActivePower { kind: Exclude<PowerKind, 'shield'>; t: number; dur: number; }
+export interface Caption { title: string; sub: string; life: number; maxLife: number; color: string; }
 
 // Single mutable game state shared by all game modules.
 export const world = {
@@ -43,7 +49,20 @@ export const world = {
   tutorial: null as Tutorial | null,
   // Last input kind, so prompts say "tap" or show keys.
   inputMode: (matchMedia('(pointer: coarse)').matches ? 'touch' : 'keys') as 'touch' | 'keys',
-  spawnTimer: 0,
+  // Run setup
+  mode: 'stage' as RunMode,
+  difficulty: storage.getOptions().difficulty as Difficulty, // effective for this run (daily forces normal)
+  stage: null as StageDef | null,
+  seed: 0,
+  nextSpawnX: 0,          // worldX at which the spawner fires next (distance-based)
+  // Biome mechanics / pickups
+  beams: [] as Beam[],    // sky: telegraphed lane lasers
+  power: null as ActivePower | null,
+  shield: false,
+  runGems: 0,
+  caption: null as Caption | null, // biome intro / storm warning text
+  seenBiomes: new Set<number>(),   // biomes introduced this run
+  skin: storage.getSkin(),
   runStats: {} as RunStats,
   opts: storage.getOptions(),
   playerName: storage.getPlayerName(), // raw input; may be empty

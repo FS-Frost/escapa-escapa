@@ -26,23 +26,28 @@ src/storage.ts          — The only localStorage access point
 src/audio.ts            — Web Audio synth SFX + procedural music (theme per biome, step sequencer)
 src/haptics.ts          — Vibration API patterns
 src/input.ts            — Keyboard, tap-to-lane pointer input, auto-pause hooks
-src/ui.ts               — setState(), overlays, options panel, pause confirm, results, install button
+src/ui.ts               — setState(), overlays, options panel, pause confirm, results (per mode), install button
+src/screens.ts          — Menu screens: mode select, stage select, skins
 src/pwa.ts              — Service worker registration + install offer (beforeinstallprompt / iOS help)
 src/jukebox.ts          — Fonoteca: soundtrack player (unlocked tracks, play/pause, rush mode, visualizer, continuous play)
 scripts/pwa-plugin.ts   — Build-time icons (PNG from code), manifest and service worker
 src/style.css           — Overlay/panel styles, touch/safe-area handling, portrait pad
-src/gfx/renderer.ts     — Batched WebGL2 renderer (`R`): rect, gradientV, tri, circle, radial, line, text
+src/gfx/renderer.ts     — Batched WebGL2 renderer (`R`): rect, gradientV/H, tri, circle, radial, line, text, darkness (shader)
 src/gfx/pixelFont.ts    — Procedural 5×7 bitmap font (uppercase + accents + ♥ ★)
 src/gfx/color.ts        — Color parsing (#hex / rgba() strings, or RGBA tuples)
 src/game/world.ts       — STATE enum + the single mutable `world` object, displayName()
 src/game/player.ts      — Player type, moveToLane(), laneAtY(), updatePlayerMotion()
-src/game/obstacles.ts   — Obstacle data/update/draw, SPAWN_PATTERNS, fair spawner + warm-up, opening seed, goal
+src/game/obstacles.ts   — Obstacle types (incl. swoop, geyser, gem, power), per-biome patterns, distance-based fair spawner, goal
+src/game/hazards.ts     — Sky beams (telegraphed lane lasers) and desert sandstorms
+src/game/stages.ts      — Run modes (stage/endless/daily), STAGES list, stars
+src/game/rng.ts         — Seeded PRNG (mulberry32) for layouts; date seed for the daily challenge
+src/game/skins.ts       — Cube skins (palettes, unlock by stars or gems)
 src/game/difficulty.ts  — Easy/Normal/Hard RULES (lives, speed, spawn interval)
 src/game/particles.ts   — Particle spawners + update/draw
-src/game/sprites.ts     — drawPlayer/Zombie/Spike/Bat/Ghost/Orb/GoalFlag
-src/game/biomes.ts      — BIOMES, city/forest/sky drawers, crossfade
+src/game/sprites.ts     — drawPlayer (skin colors)/Zombie/Spike/Bat/Ghost/Orb/GoalFlag/Geyser/Gem/PowerUp/ShieldBubble
+src/game/biomes.ts      — BIOMES (city, forest, sky, cave, volcano, desert), drawers, targetBiome(), intro captions, crossfade
 src/game/hud.ts         — Radar, HUD, combo popups, achievement banner, speed lines
-src/game/logic.ts       — Combo, achievements, collisions, startGame(withTutorial), update(dt), render()
+src/game/logic.ts       — Combo, achievements, collisions, pickups/powers, startGame(RunConfig), update(dt), render()
 src/game/tutorial.ts    — Interactive tutorial steps (up → down → radar → dodge → done)
 ```
 
@@ -80,17 +85,22 @@ src/game/tutorial.ts    — Interactive tutorial steps (up → down → radar �
 - **Goal cue is quiet on purpose:** one `goalAppear` chime, a 2.5 s notice that fades into a progress bar, a snare roll layered on the music (`rushLayer`, grows with intensity) and soft 3-2-1 `countdown` beeps. Never reintroduce a repeating alarm.
 - **Orientation:** both work and rotating mid-run just re-lays out (no pause). Landscape: the world widens to fill the screen. Portrait: game view on top (320×270) and a three-button lane pad below (`#touch-pad`, `.pad-btn[data-lane]`); taps below the canvas belong to the pad. Overlays are `position: fixed` so menus fit either way. The run auto-pauses only when the tab is hidden.
 - **Difficulty:** `RULES` in `difficulty.ts` — easy 5 lives / 0.85× speed / 1.2× interval, normal 3 lives, hard 1 life (orb can raise to 2 = the original v1 rules). Health orbs refill up to `maxHp`. 1.5 s blinking grace period after a hit.
-- **Spawner fairness:** the first `WARMUP_S` seconds only spawn single obstacles with longer intervals; runs start with three easy obstacles already on the road (`seedOpening`); a pattern is rejected if, within `FAIR_WINDOW_S` of travel around the spawn point, it would leave no free lane.
+- **Modes:** `startGame({ mode, stageId?, tutorial? })`. *Stage*: one biome, goal after `goalScore` points (15 s rush), 1-3 stars (cleared / no hits / ×4 combo), next stage unlocks with ≥1 star. *Endless*: no goal, biomes cycle every `BIOME_LEN` px and pace/speed ramp over `RAMP_DIST`; owns the records tables. *Daily*: endless with a date seed (`stringSeed(todayKey())`) and normal difficulty, best per day. JUGAR opens the mode select (after the one-time tutorial offer); the tutorial runs as stage 1.
+- **Spawner is distance-based and seeded:** it fires when `worldX` passes `world.nextSpawnX`, and every layout decision uses `rand()` from `rng.ts`, so a seed + distance fully determine the obstacles (daily challenge). Things that depend on the player (health orbs) use `Math.random` and never consume the seeded sequence; slow-mo changes time, not distance. Warm-up (first `WARMUP_DIST` px) spawns single obstacles further apart; runs start with three easy obstacles (`seedOpening`); a pattern is rejected if, within `FAIR_WINDOW_S` of travel around the spawn point, it would leave no free lane (`laneSet()` counts every lane an obstacle may occupy).
+- **One mechanic per biome:** forest = `swoop` bats that switch lane `SWOOP_AT` px ahead (radar draws the switch); sky = beams that blink for `BEAM_CHARGE` s then sweep a lane; cave = `R.darkness()` light circle around the player (shader, HUD stays lit); volcano = `geyser` vents that erupt `GEYSER_AT` px ahead and block two lanes; desert = sandstorms by distance (`stormPhase`) plus a bit of everything. A biome's first appearance in a run shows a caption with its name and mechanic.
+- **Pickups never block lanes** (`isPickup`): orb (+1 heart), gem (currency, banked into `escapa_gems` when the run ends), power (shield absorbs one hit; magnet pulls gems 8 s; slow-mo 0.6× scroll 5 s).
+- **Skins** are palettes for `drawPlayer`, unlocked by total stage stars or bought with gems (`skins.ts`).
 - **Targets:** Android Chrome + iOS Safari. iOS has no Vibration API (option hidden) and no element fullscreen on iPhone (button hidden). iOS unlocks audio on `pointerup`/`click`, not `pointerdown`.
-- **Phases:** Phase 1 (port + touch + deploy + i18n/options) is done, plus music, radar look-ahead, control feedback and the tutorial. Next: new mechanics, post-processing/shader effects.
+- **Phases:** Phase 1 (port + touch + deploy + i18n/options) is done, plus music, radar look-ahead, control feedback, tutorial, adaptive layout, PWA, Fonoteca, modes/stages/daily, six biomes with mechanics, pickups and skins. Next ideas: more stages, bosses, post-processing in the present pass.
 - **Persistence:** localStorage keys from v1 are kept forever; new option fields fall back to defaults when missing.
 
 ## Adding a New Obstacle Type
 
 1. Add a draw function in `sprites.ts`.
 2. Add the type to `ObsType` and to `OBS_W`, `OBS_H`, `OBS_YOFF` in `obstacles.ts`; add a `case` in `drawObstacle()` (and motion in `updateObstacle()` if needed).
-3. Add a `RADAR_COLORS` entry in `hud.ts`.
-4. Add weighted pattern(s) to `SPAWN_PATTERNS`.
+3. Add a `RADAR_COLORS` entry in `hud.ts` (and a custom radar mark if it spans lanes).
+4. Add weighted pattern(s) to `BASE_PATTERNS` or a biome's list in `BIOME_PATTERNS`; use `rand()`/`randInt()`, never `Math.random`, so seeded layouts stay deterministic.
+5. If it occupies more than one lane, extend `laneSet()` so fairness checks see it; if it's a pickup, add it to `isPickup()`.
 
 ## Adding a New Achievement
 
@@ -100,9 +110,16 @@ src/game/tutorial.ts    — Interactive tutorial steps (up → down → radar �
 
 ## Adding a New Biome
 
-1. Add `{ scoreStart, name }` to `BIOMES` in `biomes.ts`.
-2. Write a `drawMyBiome(off)` function and register it in `DRAW`.
-3. Crossfade and parallax offset are automatic.
+1. Add `{ name }` to `BIOMES` in `biomes.ts`, write `drawMyBiome(off)` and register it in `DRAW`.
+2. Add its pattern list to `BIOME_PATTERNS` (same index) with its mechanic.
+3. Add a music theme (`MusicSection`, `THEMES`, `playStep` case) and a Fonoteca track (`TRACKS` in `jukebox.ts`).
+4. Add i18n keys `biome.<name>`, `mech.<name>`, `track.<name>`, `juke.locked<Name>`, and optionally a stage in `STAGES`.
+5. Crossfade, parallax, endless cycling, captions and track unlock are automatic.
+
+## Adding a Stage / Skin
+
+- Stage: append to `STAGES` (`stages.ts`) with `biome`, `goalScore`, `speed`, `interval`, and add `stage.<id>` to i18n. Stars, unlocking and the select grid are automatic.
+- Skin: append to `SKINS` (`skins.ts`) with colors and `stars` or `gems`, and add `skin.<id>` to i18n.
 
 ## Adding a String / Language
 
@@ -125,6 +142,10 @@ src/game/tutorial.ts    — Interactive tutorial steps (up → down → radar �
 |-----|---------|
 | `escapa_playername` | Last entered player name (plain string, may be empty) |
 | `escapa_tutorial_seen` | `'1'` once the tutorial was offered (accepted, skipped or finished) |
+| `escapa_stage_stars` | `{ stageId: bestStars }` |
+| `escapa_gems` | Gem wallet (number) |
+| `escapa_skin` / `escapa_skins_owned` | Selected skin id / ids bought with gems |
+| `escapa_daily_challenge` | Daily challenge best by `YYYY-MM-DD` (UTC) |
 | `escapa_music_unlocked` | Fonoteca tracks unlocked, default `["menu","city"]`; a biome's theme unlocks when the biome is first reached (`updateBiomes`) |
 | `player2_hiscores` / `player2_hiscores_easy` / `player2_hiscores_normal` | Top-5 `{ name, score, stats, date }` per difficulty; the unsuffixed key is **hard** (v1 records were played with hard rules) |
 | `player2_daily` (+ `_easy` / `_normal`) | Daily best by `YYYY-MM-DD` (UTC) key, per difficulty (unsuffixed = hard) |

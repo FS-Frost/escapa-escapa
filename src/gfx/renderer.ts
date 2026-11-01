@@ -44,6 +44,22 @@ void main() {
   o = texture(u_frame, v_uv);
 }`;
 
+// Darkness overlay (cave biome): darkens everything outside a soft circle of
+// light. Drawn as a full-screen triangle into the frame, before the HUD.
+const DARK_FS = `#version 300 es
+precision mediump float;
+in vec2 v_uv;
+uniform vec2 u_size;
+uniform vec3 u_light;
+uniform float u_amount;
+out vec4 o;
+void main() {
+  vec2 p = vec2(v_uv.x * u_size.x, (1.0 - v_uv.y) * u_size.y);
+  float d = distance(p, u_light.xy);
+  float a = u_amount * smoothstep(u_light.z * 0.35, u_light.z, d);
+  o = vec4(0.02, 0.01, 0.05, a);
+}`;
+
 const FLOATS = 6; // x, y, r, g, b, a
 const MAX_VERTS = 6 * 8192;
 
@@ -78,6 +94,7 @@ export class Renderer {
   private gl: WebGL2RenderingContext;
   private spriteProg!: WebGLProgram;
   private presentProg!: WebGLProgram;
+  private darkProg!: WebGLProgram;
   private uRes!: WebGLUniformLocation | null;
   private vao!: WebGLVertexArrayObject;
   private emptyVao!: WebGLVertexArrayObject;
@@ -102,6 +119,7 @@ export class Renderer {
     const gl = this.gl;
     this.spriteProg = compile(gl, SPRITE_VS, SPRITE_FS);
     this.presentProg = compile(gl, PRESENT_VS, PRESENT_FS);
+    this.darkProg = compile(gl, PRESENT_VS, DARK_FS);
     this.uRes = gl.getUniformLocation(this.spriteProg, 'u_res');
 
     this.vbo = gl.createBuffer()!;
@@ -231,6 +249,33 @@ export class Renderer {
       const [o0, c0] = stops[i], [o1, c1] = stops[i + 1];
       this.quad(x, y + h * o0, w, h * (o1 - o0), parseColor(c0), parseColor(c1), this.alpha);
     }
+  }
+
+  // Horizontal linear gradient across [x, x+w]; `alpha` scales every stop.
+  gradientH(x: number, y: number, w: number, h: number, stops: readonly GradientStop[], alpha = 1) {
+    const a = this.alpha * alpha;
+    for (let i = 0; i < stops.length - 1; i++) {
+      const [o0, s0] = stops[i], [o1, s1] = stops[i + 1];
+      const c0 = parseColor(s0), c1 = parseColor(s1);
+      const x0 = x + w * o0, x1 = x + w * o1, y1 = y + h;
+      this.reserve(6);
+      this.vert(x0, y, c0, a); this.vert(x1, y, c1, a); this.vert(x0, y1, c0, a);
+      this.vert(x1, y, c1, a); this.vert(x1, y1, c1, a); this.vert(x0, y1, c0, a);
+    }
+  }
+
+  // Darken the frame drawn so far outside a light circle at (cx, cy).
+  darkness(cx: number, cy: number, radius: number, amount: number) {
+    if (amount <= 0) return;
+    const gl = this.gl;
+    this.flush();
+    gl.useProgram(this.darkProg);
+    gl.uniform2f(gl.getUniformLocation(this.darkProg, 'u_size'), CW, CH);
+    gl.uniform3f(gl.getUniformLocation(this.darkProg, 'u_light'), cx + this.tx, cy + this.ty, radius);
+    gl.uniform1f(gl.getUniformLocation(this.darkProg, 'u_amount'), amount);
+    gl.bindVertexArray(this.emptyVao);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+    gl.bindVertexArray(null);
   }
 
   tri(x1: number, y1: number, x2: number, y2: number, x3: number, y3: number, color: Color) {

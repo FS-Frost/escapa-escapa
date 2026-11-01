@@ -36,8 +36,11 @@ Jumping from the bottom to the top lane is a single arc; obstacles in the middle
 1. Obstacles scroll in from the right across three lanes (top, mid, bottom).
 2. Change lanes to avoid them. Each avoided obstacle earns **1 point × your current multiplier**.
 3. Avoid 5 obstacles in a row to raise your multiplier: **×1 → ×2 → ×3 → ×4**.
-4. At **100 points** the goal flag appears on the radar and a progress bar; it arrives in about **30 seconds** while the pace and the music speed up.
-5. Reach the goal to win.
+4. Pick a mode:
+   - **Stages** (8): each one is a biome with its own mechanic. Score enough points and the goal flag appears; reach it to clear the stage. Earn up to ★★★ (cleared · no hits · ×4 combo); each cleared stage unlocks the next.
+   - **Endless**: no goal — biomes cycle and the pace keeps rising. Your score goes to the records.
+   - **Daily challenge**: an endless run with the same obstacle layout for everyone that day.
+5. Grab gems ◆ and power-ups along the way; spend gems (or earn stars) on cube skins.
 
 ## Obstacles
 
@@ -48,7 +51,14 @@ Jumping from the bottom to the top lane is a single arc; obstacles in the middle
 | Bat | Mid, Top | Sine-wave flying enemy |
 | Ghost | Top | Translucent, sine-wave drifter |
 | Pit | Bottom | Gap in the floor — be out of the bottom lane |
-| Big M Orb | Any | Power-up: restores one heart (up to the difficulty cap) |
+| Red bat (forest) | Any | Switches to an adjacent lane before reaching you — the radar shows where |
+| Beam (sky) | Any | A lane blinks, then a laser sweeps it — leave that lane |
+| Geyser (volcano) | Two lanes | Smoking vents erupt into a lava column blocking two lanes |
+| Big M Orb | Any | Restores one heart (up to the difficulty cap) |
+| Gem ◆ | Any | Currency for skins |
+| Shield / Magnet / Slow-mo | Any | Absorbs one hit / pulls gems for 8 s / slows the world for 5 s |
+
+The **cave** is dark (only a light around the cube — trust the radar) and the **desert** has sandstorms that cover the road ahead.
 
 ## Features
 
@@ -57,13 +67,15 @@ Jumping from the bottom to the top lane is a single arc; obstacles in the middle
 - **Visual control feedback**: lane markers on the right edge, a glow on the chosen lane, and a landing outline
 - **Optional interactive tutorial**: offered the first time you play (controls, radar and a practice dodge), replayable from Options
 - **Combo multiplier** up to ×4 with popups
-- **3 biomes** — City → Forest → Sky — with parallax and crossfades
+- **6 biomes, each with its own mechanic** — City, Forest (lane-switching bats), Sky (beams), Cave (darkness), Volcano (geysers), Desert (sandstorms) — with parallax and crossfades
+- **Modes**: 8 stages with ★★★ ratings, Endless, and a seeded Daily challenge
+- **Gems, power-ups and skins**: shield, magnet and slow-mo; 8 cube skins unlocked by stars or bought with gems
 - **Procedural pixel font**, crisp at any screen size
 - **Procedural music**: a theme per biome (plus a menu theme) with crossfades, speeding up as the goal approaches
 - **Fonoteca**: a soundtrack player in the main menu — biome themes unlock as you reach them; rush mode, visualizer and continuous play
 - **Synthesized sound effects** (Web Audio API) and **vibration** on supported phones
 - **Three difficulties**: Easy (5 lives, slower), Normal (3 lives), Hard (1 life); fair obstacle patterns and a gentle start
-- **Achievements**, **top-5 high scores** per difficulty with your name, and a daily best
+- **Achievements**, **top-5 endless high scores** per difficulty with your name, and daily bests
 - **Spanish / English**, auto-detected and switchable
 - **Options** (from the main menu and pause): language, music and effects volume, mute, vibration, radar, reduce motion, fullscreen
 - **Any screen, any orientation**: landscape widens the world to fill the screen; portrait shows the game on top and a lane pad below; rotating mid-run just adapts. Safe areas respected, auto-pause when the app is hidden
@@ -73,11 +85,14 @@ Jumping from the bottom to the top lane is a single arc; obstacles in the middle
 
 | Achievement (es / en) | Condition |
 |-----------------------|-----------|
-| ¡Primera escapada! / First escape! | Win a run |
+| ¡Primera escapada! / First escape! | Clear a stage |
 | Intocable x10 / Untouchable x10 | Reach a 10-obstacle streak |
 | Combo máximo / Max combo | Reach the ×4 multiplier |
-| Demonio de velocidad / Speed demon | Survive 10 seconds at max speed |
+| Demonio de velocidad / Speed demon | Endless: 10 seconds at 1.8× the starting speed |
 | Regreso épico / Epic comeback | Win on your last heart after losing at least one |
+| Etapa perfecta / Perfect stage | Get ★★★ on a stage |
+| Explorador total / Explorer | Clear all 8 stages |
+| Coleccionista / Collector | Have 100 gems |
 
 ## Browser Compatibility
 

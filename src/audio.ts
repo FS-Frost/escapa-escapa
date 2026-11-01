@@ -11,7 +11,7 @@ import type { Options } from './storage';
 // Music is a 16th-note step sequencer over a 4-bar progression. Every theme is
 // scheduled on the same step clock, so switching themes crossfades in time.
 
-export type MusicSection = 'off' | 'menu' | 'city' | 'forest' | 'sky';
+export type MusicSection = 'off' | 'menu' | 'city' | 'forest' | 'sky' | 'cave' | 'volcano' | 'desert';
 export type Theme = Exclude<MusicSection, 'off'>;
 
 const midiToHz = (midi: number) => 440 * 2 ** ((midi - 69) / 12);
@@ -45,11 +45,28 @@ const FMAJ7_EM7_DM7_CMAJ7: Bar[] = [
   { bass: 36, chord: [55, 59, 60, 64] },
 ];
 
+// Andalusian cadence Am-G-F-E (cave, volcano) and a phrygian-flavoured Am-Dm-E-Am (desert).
+const AM_G_F_E: Bar[] = [
+  { bass: 45, chord: [57, 60, 64] },
+  { bass: 43, chord: [55, 59, 62] },
+  { bass: 41, chord: [53, 57, 60] },
+  { bass: 40, chord: [56, 59, 64] },
+];
+const AM_DM_E_AM: Bar[] = [
+  { bass: 45, chord: [57, 60, 64] },
+  { bass: 38, chord: [53, 57, 62] },
+  { bass: 40, chord: [56, 59, 64] },
+  { bass: 45, chord: [57, 60, 64] },
+];
+
 const THEMES: Record<Theme, { bpm: number; bars: Bar[] }> = {
   menu: { bpm: 92, bars: AM_F_C_G },
   city: { bpm: 116, bars: AM_F_C_G },
   forest: { bpm: 104, bars: AM_EM_F_G },
   sky: { bpm: 96, bars: FMAJ7_EM7_DM7_CMAJ7 },
+  cave: { bpm: 88, bars: AM_G_F_E },
+  volcano: { bpm: 128, bars: AM_G_F_E },
+  desert: { bpm: 108, bars: AM_DM_E_AM },
 };
 
 let ac: AudioContext | null = null;
@@ -194,6 +211,36 @@ function playStep(name: Theme, stepIdx: number, t: number) {
       if (s === 0) kick(out, t, 0.45);
       if (s === 8) hat(out, t, 0.05);
       break;
+
+    case 'cave': { // dark and spacious: drone bass, echoing plucks, water-drop pings
+      if (s === 0) bass(out, t, bar.bass - 12, six * 14, 0.2, 'triangle');
+      if (s % 4 === 0) {
+        const n = bar.chord[(s / 4) % bar.chord.length] + 12;
+        arp(out, t, n, six * 2, 0.05, 'triangle');
+        arp(out, t + six * 3, n, six * 2, 0.02, 'triangle'); // echo
+      }
+      if (s === 6 || s === 13) arp(out, t, bar.chord[2] + 31, six, 0.025, 'sine');
+      if (s === 0 || s === 10) kick(out, t, 0.35);
+      break;
+    }
+
+    case 'volcano': // heavy: 16th saw bass, pounding toms, stabs on the off-beats
+      bass(out, t, bar.bass + (s % 8 === 7 ? 12 : 0), six * 0.9, 0.2, 'sawtooth');
+      if (s % 4 === 0 || s === 14) kick(out, t, 0.85);
+      if (s === 4 || s === 12) snare(out, t, 0.35);
+      if (s % 4 === 2) arp(out, t, bar.chord[(s / 2) % bar.chord.length] + 12, six * 1.2, 0.045, 'square');
+      if (s % 2 === 1) hat(out, t, 0.06);
+      break;
+
+    case 'desert': { // swaying: hand drums, snake-charmer melody over the E chord's G#
+      const melody = [0, 1, 2, 1, 0, 2, 1, 0];
+      if (s === 0 || s === 7 || s === 10) bass(out, t, bar.bass, six * 2.5, 0.2, 'triangle');
+      if (s % 2 === 0) arp(out, t, bar.chord[melody[(s / 2) % melody.length] % bar.chord.length] + 12, six * 1.6, 0.045, 'square');
+      if (s === 0 || s === 6 || s === 8 || s === 11) noiseHit(out, t, 'bandpass', 400, 0.3, 0.12); // doumbek
+      if (s === 4 || s === 12) noiseHit(out, t, 'bandpass', 1200, 0.18, 0.06);
+      if (s % 2 === 1) hat(out, t, 0.03);
+      break;
+    }
   }
 }
 
@@ -328,6 +375,8 @@ const sounds = {
   countdown() { tone(784, 0.09, 'sine', 0.14); },
   combo() { tone(880, 0.08, 'sine', 0.22); tone(1100, 0.08, 'sine', 0.2, 0.06); },
   nearMiss() { tone(550, 0.05, 'sine', 0.12); },
+  gem() { tone(1568, 0.06, 'sine', 0.12); tone(2093, 0.08, 'sine', 0.1, 0.04); },
+  shieldBreak() { tone(1200, 0.08, 'square', 0.15); tone(600, 0.2, 'triangle', 0.2, 0.05); },
   achievement() { [784, 1047, 1319].forEach((f, i) => tone(f, 0.18, 'sine', 0.25, i * 0.08)); },
 };
 

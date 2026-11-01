@@ -454,6 +454,133 @@ body.portrait .hint-portrait { display: block; }
 .score-pts  { font-weight: 700; }
 .scores-empty { color: #777; padding: 0.5rem; }
 
+/* ===== MENU GRID / MODES ===== */
+.menu-grid {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.mode-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  min-height: 3.4rem;
+}
+
+.mode-btn small {
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: #d8c8ff;
+  letter-spacing: 0;
+}
+
+.panel-wide {
+  max-width: 34rem;
+}
+
+/* ===== STAGE SELECT ===== */
+.stage-grid {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.5rem;
+}
+
+@media (orientation: landscape) {
+  .stage-grid { grid-template-columns: repeat(4, 1fr); }
+  .skin-grid { grid-template-columns: repeat(8, 1fr) !important; }
+}
+
+.stage-card {
+  min-height: 4.2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+  padding: 0.35rem;
+  font-family: inherit;
+  color: #fff;
+  border: 2px solid #3d3d6e;
+  border-radius: 6px;
+  cursor: pointer;
+  background: #16162a;
+}
+
+/* Biome tint per card */
+.stage-card[data-biome="city"] { background: linear-gradient(#1a1a2e, #2b2f5e); }
+.stage-card[data-biome="forest"] { background: linear-gradient(#0d2b1a, #1f5a33); }
+.stage-card[data-biome="sky"] { background: linear-gradient(#050520, #2a1a5a); }
+.stage-card[data-biome="cave"] { background: linear-gradient(#07060d, #2a1d3e); }
+.stage-card[data-biome="volcano"] { background: linear-gradient(#1a0505, #6a1e08); }
+.stage-card[data-biome="desert"] { background: linear-gradient(#2d1b4e, #b5523b); }
+
+.stage-card:disabled { opacity: 0.4; cursor: default; }
+.stage-card:not(:disabled):hover { border-color: #e879f9; }
+
+.stage-num { font-size: 1.2rem; font-weight: 900; }
+.stage-name { font-size: 0.75rem; text-align: center; }
+.stage-stars { font-size: 0.85rem; color: #ffd700; letter-spacing: 1px; }
+
+/* ===== SKINS ===== */
+.skin-grid {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.5rem;
+}
+
+.skin-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.4rem 0.2rem;
+  font-family: inherit;
+  color: #ddd;
+  background: #0a0a1a;
+  border: 2px solid #3d3d6e;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.skin-card canvas {
+  width: 2.4rem;
+  height: 2.4rem;
+  image-rendering: pixelated;
+}
+
+.skin-card[aria-pressed="true"] { border-color: #e879f9; background: #2d1b4e; }
+.skin-card:disabled { opacity: 0.5; cursor: default; }
+.skin-name { font-size: 0.75rem; font-weight: 700; }
+.skin-status { font-size: 0.7rem; color: #67e8f9; min-height: 1em; }
+
+/* ===== VICTORY ===== */
+.stars-row {
+  font-size: 2rem;
+  color: #ffd700;
+  letter-spacing: 0.3rem;
+  text-shadow: 0 0 12px rgba(255, 215, 0, 0.6);
+}
+
+.star-list {
+  list-style: none;
+  width: 100%;
+  text-align: left;
+  font-size: 0.9rem;
+  color: #777;
+}
+
+.star-list .got { color: #ffd700; }
+
+.victory-note {
+  color: #ffd700;
+  font-weight: 700;
+}
+
 /* ===== FONOTECA (jukebox) ===== */
 .juke-list {
   width: 100%;
@@ -571,3 +698,8 @@ body.portrait .hint-portrait { display: block; }
 }
 
 #game-wrapper.playing.tutorial #tutorial-skip { display: block; }
+
+@media (orientation: landscape) and (max-height: 560px) {
+  .stars-row { font-size: 1.5rem; line-height: 1; }
+  .panel .stats-block { line-height: 1.45; }
+}

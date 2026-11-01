@@ -66,10 +66,12 @@ MENU → PLAYING ←→ PAUSED
          ↓
         DEAD → MENU / PLAYING
          ↓
-      VICTORY → HISCORE (after 2.5 s) → MENU
+      VICTORY (stages) → next stage / replay / MENU
 ```
 
-`setState()` (`src/ui.ts`) toggles overlay visibility and the wrapper's `.playing` class (which shows the ⏸ button). The options panel is a separate layer above MENU or PAUSED and does not change the state. `Esc` backs out of the innermost layer: options → pause confirmation → pause toggle.
+Menu screens (mode select, stage select, skins, options, Fonoteca, tutorial offer) are overlay layers that don't change the state.
+
+`setState()` (`src/ui.ts`) toggles overlay visibility and the wrapper's `.playing` class (which shows the ⏸ button). `Esc` backs out of the innermost layer: menu screens → Fonoteca → install help / tutorial offer → options → pause confirmation → pause toggle.
 
 ---
 
@@ -106,21 +108,39 @@ A bottom→top jump takes ≈0.21 s with a higher arc. A new input during a jump
 
 ## Spawner
 
-Weighted random pattern selection over `SPAWN_PATTERNS`:
+The spawner is **distance-based and seeded**: a spawn fires each time `worldX` passes `world.nextSpawnX`, and every layout decision draws from the seeded PRNG (`rng.ts`, mulberry32). A seed plus the distance run fully determine the obstacles, independent of frame timing, slow-mo or the player — the daily challenge seeds it from the UTC date.
 
 ```
-interval = max(0.45, 1.2 − score·0.005) · difficulty.interval + warmup · 0.9 + random(0..0.3)
-warmup   = max(0, 1 − gameTime / 20)        // 1 → 0 over the first 20 s
+gap (px)  = interval(s) · current speed
+interval  = base · difficulty.interval + warm · 0.9 + rand() · 0.3
+base      = stage: 1.1 · stage.interval      endless/daily: 1.2 − 0.7 · ramp
+ramp      = min(1, worldX / 30000)          speed (endless) = base speed · (1 + 0.9 · ramp)
+warm      = max(0, 1 − worldX / 2200)
 ```
 
-- **Warm-up:** while `warmup > 0`, only single-obstacle ("simple") patterns spawn.
-- **Opening:** each run starts with three simple obstacles already on the road (520 / 780 / 1040 px ahead), so the first seconds aren't empty while spawns travel in.
-- **Fairness:** a candidate pattern is rejected if, together with existing obstacles within `speed · 0.5 s + 40 px` of the spawn point (reaction + the longest jump), it would cover all three lanes. Up to 8 candidates are tried; if none fits, the spawner retries 0.15 s later. Orbs never count as blocking.
-- If HP is below max, there is a 15% chance to spawn a Big M Orb instead.
+- **Patterns per biome** (`BIOME_PATTERNS`): the classic set plus the biome's mechanic (swoop bats, beams, geysers; the desert mixes all three).
+- **Warm-up:** while `warm > 0` (and in stage 1), only single-obstacle patterns spawn.
+- **Opening:** each run starts with three simple obstacles already on the road (520 / 780 / 1040 px ahead).
+- **Fairness:** a candidate is rejected if, together with obstacles within `speed · 0.5 s + 40 px` of the spawn point, it would cover all three lanes (`laneSet()` counts both lanes of a geyser and a swoop's start and end lanes). Beams use `beamAllowed()`, which predicts what reaches the player when the beam fires. Up to 8 candidates are tried; otherwise it retries 20 px later.
+- **Pickups ride along** in a lane the pattern left free: 30% a row of 3 gems, 5% a power-up (after the warm-up). Health orbs (15% while hurt) use `Math.random` so they never shift the seeded sequence.
 
 Obstacles spawn off-screen at `PLAYER_X + SPAWN_AHEAD` (1280 px; the screen ends at CW ≤ 640). The spacing between obstacles depends only on the interval and the speed, so the pace is the same as spawning at the screen edge.
 
 ---
+
+## Modes, Stages & Progression
+
+| Mode | Goal | Layout | Records |
+|------|------|--------|---------|
+| Stage (8) | After `goalScore` points | Random seed per attempt, one biome | Best stars per stage |
+| Endless | None | Random seed; biomes cycle; pace ramps | Top-5 per difficulty + daily best |
+| Daily | None | Date seed, normal difficulty | Best per day |
+
+Stages: 1-2 city (stage 1 only single obstacles), 3-4 forest, 5 sky, 6 cave, 7 volcano, 8 desert, with rising goal score and speed. Stars: ★ cleared, ★ no hits, ★ reached ×4. A stage unlocks when the previous one has ≥1 star. JUGAR opens the mode select; the one-time tutorial runs as stage 1.
+
+**Gems & power-ups:** gems collected in a run are banked into the wallet when the run ends (death or victory). Shield absorbs one hit (1 s grace afterwards), magnet pulls gems within 220 px for 8 s, slow-mo scales scroll speed by 0.6 for 5 s (distance-based spawning keeps the layout unchanged).
+
+**Skins:** 8 palettes for the cube (`skins.ts`); some unlock with total stars (4, 9, 15, 24), others are bought with gems (60, 120, 250). Rainbow cycles its hue.
 
 ## Difficulty
 
@@ -156,8 +176,10 @@ AABB with an 18% inset on the player rect for forgiving feel. Pits collide only 
 
 ## Goal Sequence
 
-1. At `score ≥ 100`, `spawnGoal()` places the goal `scrollSpeed · speedBoost · 30 s` ahead.
-2. `speedBoost` ramps toward 2.5× over 30 s, so the goal arrives a bit sooner than 30 s.
+Only in stages. Endless and daily runs have no goal.
+
+1. At `score ≥ stage.goalScore`, `spawnGoal(15)` places the goal `scrollSpeed · speedBoost · 15 s` ahead. Until then the top bar fills with score / goal score.
+2. `speedBoost` ramps toward 2× over 15 s, so the goal arrives a bit sooner.
 3. The cue is deliberately quiet:
    - a single `goalAppear` chime when the goal spawns;
    - "¡LA META SE ACERCA!" shows for 2.5 s and fades, leaving a thin progress bar (filled by `1 − (goal.x − player.x) / startDist`) with a small flag under the radar;
@@ -186,13 +208,16 @@ Prompts adapt to the last input kind (`world.inputMode`: touch or keys). Lane st
 
 ## Biomes
 
-| Biome | Threshold | Palette |
-|-------|-----------|---------|
-| City  | 0  | Dark blue sky, neon buildings, yellow road markings |
-| Forest | 34 | Dark green, trees, mushrooms, fireflies |
-| Sky   | 67 | Deep space, aurora bands, blinking stars, cloud floor |
+| Biome | Look | Mechanic |
+|-------|------|----------|
+| City | Neon buildings, road markings | Classic hazards only |
+| Forest | Trees, mushrooms, fireflies | **Swoop bats** (red) switch to an adjacent lane 300 px ahead; the radar draws a line to the target lane |
+| Sky | Space, aurora, clouds | **Beams**: a lane blinks for 1.2 s (radar row too), then a laser sweeps it for 0.45 s |
+| Cave | Stalactites, glowing crystals | **Darkness**: `R.darkness()` draws a full-screen shader pass that leaves only a flickering light circle around the player; the HUD and radar are drawn after it |
+| Volcano | Red sky, volcanoes, falling ash, lava cracks | **Geysers**: smoking vents that erupt 240 px ahead into a lava column blocking two lanes |
+| Desert | Dusk dunes, low sun, cacti | **Sandstorms** for 1000 of every 2600 px (by distance): sand covers the road ahead of the player; plus a few swoops, beams and geysers |
 
-Each biome is a draw function with hardcoded parallax multipliers. Crossfade: the old biome draws at full alpha and the new one at `alpha = t` over 3 s. City window lights come from a deterministic hash, so they don't flicker.
+Which biome is active: a stage has a fixed one; endless/daily cycle through all six every 4500 px. Each biome is a draw function with parallax multipliers; element counts scale with `CW`. Crossfade: the old biome draws at full alpha and the new one at `alpha = t` over 3 s; darkness and storms are weighted by the same crossfade (`biomeWeight`). The first time a biome appears in a run, a caption announces its name and mechanic, and its music track unlocks in the Fonoteca.
 
 ---
 
@@ -244,6 +269,9 @@ The music is a 16th-note step sequencer over a 4-bar progression, scheduled ahea
 | city | City biome | 116 | Am F C G | Octave saw bass, 16th square arpeggio, four-on-the-floor kick, snare, hats |
 | forest | Forest biome | 104 | Am Em F G | Bouncy triangle bass, plucked up/down arpeggio, light kick, shaker |
 | sky | Sky biome | 96 | Fmaj7 Em7 Dm7 Cmaj7 | Wide pads, high sine arpeggio in threes, sparse beat |
+| cave | Cave biome | 88 | Am G F E | Low drone, echoing plucks, water-drop pings |
+| volcano | Volcano biome | 128 | Am G F E | 16th saw bass, pounding kicks, off-beat stabs |
+| desert | Desert biome | 108 | Am Dm E Am | Hand drums, swaying snake-charmer melody |
 
 - Every theme has its own gain on one shared step clock. `setMusic(theme, fadeS)` ramps the gains, and the fading theme keeps being scheduled until it's silent.
 - Biome changes crossfade over 3 s, matching the visual crossfade; menu ↔ run fades over 0.6 s; music stops (0.3 s) on death and victory, which have their own stinger SFX.
@@ -320,6 +348,10 @@ Pause also offers resume, restart and back-to-menu (both destructive actions ask
 | `player2_daily` (+ `_easy` / `_normal`) | `{ "YYYY-MM-DD": bestScore }` (UTC date), per difficulty |
 | `player2_achievements` | `{ achievementId: timestamp }` |
 | `player2_options` | `{ sfxVolume, musicVolume, showRadar, mute, lang, vibration, reduceMotion, difficulty }` |
+| `escapa_stage_stars` | `{ stageId: bestStars }` |
+| `escapa_gems` | Gem wallet |
+| `escapa_skin` / `escapa_skins_owned` | Selected skin / skins bought with gems |
+| `escapa_daily_challenge` | `{ "YYYY-MM-DD": best }` for the seeded daily run |
 
 Keys are unchanged from v1. Options missing newer fields fall back to defaults, and the v1 single `volume` becomes `sfxVolume`. All access is wrapped in try/catch so the game degrades silently in private browsing. Record names are rendered with `textContent`, never `innerHTML`.
 

@@ -5,7 +5,9 @@ import { haptics } from './haptics';
 import { storage } from './storage';
 import { t, setLang, LANGS, type Key, type Lang } from './i18n';
 import { world, displayName, STATE, type State } from './game/world';
-import { startGame } from './game/logic';
+import { startGame, restartRun } from './game/logic';
+import { bindScreens, openModes, closeTopScreen, starString } from './screens';
+import { STAGES } from './game/stages';
 import { endTutorial } from './game/tutorial';
 import type { Difficulty } from './game/difficulty';
 import { biomeTheme } from './game/biomes';
@@ -52,6 +54,7 @@ export function pauseIfPlaying() {
 
 // Escape backs out of the innermost layer: tutorial offer / options → confirm → pause toggle.
 export function handleEscape() {
+  if (closeTopScreen()) return;
   if (isJukeboxOpen()) closeJukebox();
   else if (!$('overlay-install-ios').classList.contains('hidden')) show('overlay-install-ios', false);
   else if (!$('overlay-tutorial-offer').classList.contains('hidden')) show('overlay-tutorial-offer', false);
@@ -112,17 +115,26 @@ function el(tag: string, cls: string, text: string | number) {
   return e;
 }
 
+const modeLabel = () => world.stage
+  ? `${t('stage.short', { n: world.stage.id })} · ${t(`stage.${world.stage.id}` as Key)}`
+  : t(world.mode === 'daily' ? 'mode.daily' : 'mode.endless');
+
 function renderStats(target: HTMLElement) {
-  const diff = world.opts.difficulty;
+  const diff = world.difficulty;
   const rows: [Key, string | number][] = [
+    ['stats.mode', modeLabel()],
     ['stats.difficulty', t(`diff.${diff}`)],
     ['stats.score', world.score],
     ['stats.maxStreak', world.runStats.maxStreak ?? 0],
     ['stats.mult', 'x' + (world.runStats.maxMult ?? 1)],
+    ['stats.gems', '◆ ' + world.runGems],
     ['stats.time', Math.floor(world.gameTime) + 's'],
-    ['stats.worlds', world.currentBiome + 1],
-    ['stats.daily', storage.getDailyBest(diff)],
   ];
+  if (!world.stage) {
+    rows.push(['stats.distance', `${Math.floor(world.worldX / 10)} m`]);
+    rows.push(['stats.worlds', world.seenBiomes.size]);
+    rows.push(['stats.daily', world.mode === 'daily' ? storage.getDailyChallengeBest() : storage.getDailyBest(diff)]);
+  }
   target.replaceChildren(...rows.map(([k, v]) => {
     const row = el('div', 'stat-row', '');
     row.append(el('span', 'stat-label', t(k)), el('span', 'stat-value', v));
@@ -130,28 +142,40 @@ function renderStats(target: HTMLElement) {
   }));
 }
 
-function saveRun() {
-  const diff = world.opts.difficulty;
-  storage.saveDailyBest(diff, world.score);
-  storage.saveScore(diff, displayName(), world.score, world.runStats);
+// Records belong to endless runs; the daily challenge keeps its own best.
+// Returns true when the run set a new daily-challenge best.
+function saveRun(): boolean {
+  if (world.mode === 'daily') return storage.saveDailyChallenge(world.score);
+  if (world.mode === 'endless') {
+    storage.saveDailyBest(world.difficulty, world.score);
+    storage.saveScore(world.difficulty, displayName(), world.score, world.runStats);
+  }
+  return false;
 }
 
 export function showDeadScreen() {
-  saveRun();
+  const newDaily = saveRun();
   $('dead-title').textContent = t('dead.title', { name: displayName() });
+  $('dead-note').textContent = newDaily ? t('stats.newDaily') : '';
+  show('dead-note', newDaily);
   renderStats($('dead-stats'));
 }
 
+// Stage cleared: stars earned (with what each one means), stats, next stage.
 export function showVictoryScreen() {
-  saveRun();
+  const stars = world.runStats.stars ?? 1;
+  const p = world.player;
   $('victory-title').textContent = t('victory.title', { name: displayName() });
+  $('victory-stars').textContent = starString(stars);
+  const items: [Key, boolean][] = [
+    ['stars.clear', true],
+    ['stars.nohit', p.hitsTaken === 0],
+    ['stars.combo', (world.runStats.maxMult ?? 1) >= 4],
+  ];
+  $('victory-star-list').replaceChildren(...items.map(([k, ok]) => el('li', ok ? 'got' : '', `${ok ? '★' : '☆'} ${t(k)}`)));
   renderStats($('victory-stats'));
-  setTimeout(() => {
-    // The player may have restarted or left during the delay
-    if (world.state !== STATE.VICTORY) return;
-    renderScoresList();
-    setState(STATE.HISCORE);
-  }, 2500);
+  const next = STAGES.find(s => s.id === (world.stage?.id ?? 0) + 1);
+  show('btn-next-stage', !!next);
 }
 
 // ===== DIFFICULTY SELECTORS =====
@@ -223,22 +247,25 @@ export function bindUI() {
   }
 
   const toMenu = () => setState(STATE.MENU);
-  const play = () => startGame();
+  const play = () => restartRun();
+  const tutorialRun = () => startGame({ mode: 'stage', stageId: 1, tutorial: true });
+  bindScreens(startGame);
   click('btn-start', () => {
     audio.init();
     nameInput.blur();
-    // First time only: offer the tutorial before the first run
-    if (storage.getTutorialSeen()) play();
+    // First time only: offer the tutorial before choosing a mode
+    if (storage.getTutorialSeen()) openModes();
     else show('overlay-tutorial-offer', true);
   });
   const answerOffer = (withTutorial: boolean) => {
     storage.setTutorialSeen();
     show('overlay-tutorial-offer', false);
-    startGame(withTutorial);
+    if (withTutorial) tutorialRun();
+    else openModes();
   };
   click('btn-tutorial-yes', () => answerOffer(true));
   click('btn-tutorial-no', () => answerOffer(false));
-  click('btn-tutorial', () => { closeOptions(); startGame(true); });
+  click('btn-tutorial', () => { closeOptions(); tutorialRun(); });
   click('tutorial-skip', endTutorial);
   click('btn-hiscores-menu', () => {
     audio.init();
@@ -260,6 +287,7 @@ export function bindUI() {
   click('btn-restart-dead', play);
   click('btn-menu-dead', toMenu);
   click('btn-restart-victory', play);
+  click('btn-next-stage', () => startGame({ mode: 'stage', stageId: (world.stage?.id ?? 0) + 1 }));
   click('btn-menu-victory', toMenu);
   click('btn-close-hiscores', toMenu);
   click('pause-btn', () => { audio.init(); togglePause(); });

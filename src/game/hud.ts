@@ -3,12 +3,15 @@ import { LANE_FLASH_DUR } from './player';
 import { R } from '../gfx/renderer';
 import { world, displayName } from './world';
 import { t, type Key } from '../i18n';
-import type { ObsType } from './obstacles';
+import { laneSet, type ObsType } from './obstacles';
+import { BEAM_CHARGE } from './hazards';
+import { drawPowerIcon } from './sprites';
 
 // ===== RADAR =====
 const RADAR_COLORS: Record<ObsType, string> = {
   zombie: '#7CFC00', spike: '#FF4444', bat: '#AA88FF',
   ghost: '#88DDFF', pit: '#FF8800', orb: '#FFD700',
+  swoop: '#f97316', geyser: '#ff5a1f', gem: '#67e8f9', power: '#ffffff',
 };
 const LANE_ROW_Y = [18, 11, 4]; // bottom/mid/top within radar strip
 const RADAR_X0 = 4;
@@ -19,18 +22,39 @@ const radarX = (dist: number) => RADAR_X0 + Math.floor(Math.min(1, Math.max(0, d
 
 export function drawRadar() {
   if (!world.opts.showRadar && !world.tutorial) return; // the tutorial explains it
-  const { player, obstacles, goal } = world;
+  const { player, obstacles, goal, beams } = world;
 
   R.rect(0, 0, CW, RADAR_H, '#0a0a18');
   // Portion of the radar that is already visible on screen
   R.rect(RADAR_X0, 0, radarX(CW - player.x) - RADAR_X0, RADAR_H - 1, '#ffffff', 0.05);
   for (let l = 0; l < LANE_COUNT; l++) R.rect(0, LANE_ROW_Y[l], CW, 6, '#ffffff', 0.03);
+  // Charging beams light up their whole row (blinking faster as they charge)
+  for (const b of beams) {
+    const on = b.t >= BEAM_CHARGE || Math.floor(b.t * (6 + b.t / BEAM_CHARGE * 14)) % 2 === 0;
+    if (on) R.rect(0, LANE_ROW_Y[b.lane], CW, 6, '#7df9ff', b.t >= BEAM_CHARGE ? 0.8 : 0.4);
+  }
   R.rect(0, LANE_ROW_Y[player.targetLane], 3, 6, '#e879f9');
 
   for (const obs of obstacles) {
     const dist = obs.x - player.x;
     if (dist < 0 || dist > SPAWN_AHEAD) continue;
-    R.rect(radarX(dist), LANE_ROW_Y[obs.lane], 3, 6, RADAR_COLORS[obs.type]);
+    const x = radarX(dist), c = RADAR_COLORS[obs.type];
+    if (obs.type === 'geyser') {
+      // Two-lane hazard: one tall mark over both rows
+      const [lo, hi] = obs.lanes!;
+      R.rect(x, LANE_ROW_Y[hi], 3, LANE_ROW_Y[lo] - LANE_ROW_Y[hi] + 6, c, obs.erupted ? 1 : 0.6);
+    } else if (obs.type === 'swoop' && obs.switchT === undefined) {
+      // Not switched yet: dot in its lane + a thin line toward where it will go
+      const [from, to] = laneSet(obs);
+      R.rect(x, LANE_ROW_Y[from], 3, 6, c);
+      const y0 = Math.min(LANE_ROW_Y[from], LANE_ROW_Y[to]) + 3, y1 = Math.max(LANE_ROW_Y[from], LANE_ROW_Y[to]) + 3;
+      R.rect(x + 1, y0, 1, y1 - y0, c, 0.8);
+      R.rect(x, LANE_ROW_Y[to] + 2, 3, 2, c, 0.8);
+    } else if (obs.type === 'gem') {
+      R.rect(x, LANE_ROW_Y[obs.lane] + 2, 2, 2, c);
+    } else {
+      R.rect(x, LANE_ROW_Y[obs.lane], 3, 6, c);
+    }
   }
 
   // Goal stays pinned to the right edge until it enters radar range
@@ -71,7 +95,22 @@ export function drawHUD() {
     R.text(displayName(), heartsLeft - 4, RADAR_H + 12 - 3.5 * s, '#aaaacc', { align: 'right', scale: s, maxWidth: 100 });
   }
 
-  if (world.goalApproaching) drawGoalProgress(heartsLeft);
+  // Right column under the hearts: gems this run, active power / shield
+  if (!world.tutorial) {
+    const rowY = RADAR_H + 23;
+    R.text(`◆${world.runGems}`, hx, rowY, '#67e8f9', { align: 'right', scale: s });
+    let iconX = hx - 6;
+    const iconY = rowY + 7 * s + 10;
+    if (world.shield) { drawPowerIcon(iconX, iconY, 'shield'); iconX -= 16; }
+    if (world.power) {
+      drawPowerIcon(iconX, iconY, world.power.kind);
+      const k = 1 - world.power.t / world.power.dur;
+      R.rect(iconX - 6, iconY + 8, 12, 2, '#ffffff', 0.2);
+      R.rect(iconX - 6, iconY + 8, Math.round(12 * k), 2, '#ffffff', 0.8);
+    }
+  }
+
+  drawProgress(heartsLeft);
 
   if (score >= hiScore && score > 0) {
     // Sits above the achievement banner while it is showing
@@ -80,31 +119,60 @@ export function drawHUD() {
   }
 }
 
-// ===== GOAL PROGRESS =====
+// ===== PROGRESS (top center) =====
 const GOAL_NOTICE_S = 2.5;
 const BAR_Y = RADAR_H + 6;
 
-// Brief notice when the goal appears, then a quiet bar that fills up to the
-// flag, centered in the free space between the score column and the hearts.
-function drawGoalProgress(heartsLeft: number) {
-  const { goal, player, goalTimer } = world;
-  if (!goal) return;
+// Stages: a bar filling toward the goal score, then (goal spawned) toward the
+// flag, with a brief notice. Endless/daily: distance run in metres.
+function drawProgress(heartsLeft: number) {
+  const { goal, player, goalTimer, stage } = world;
+  if (world.tutorial) return;
   const space = heartsLeft - 14 - SCORE_AREA_W; // keep room for the flag
   const BAR_W = Math.max(40, Math.min(140, space));
   const BAR_X = Math.round(SCORE_AREA_W + (space - BAR_W) / 2);
-  const k = Math.min(1, Math.max(0, 1 - (goal.x - player.x) / goal.startDist));
+  const mid = BAR_X + BAR_W / 2;
+
+  if (!stage) {
+    const label = world.mode === 'daily' ? t('mode.daily') : t('mode.endless');
+    R.text(`${Math.floor(world.worldX / 10)} m`, mid, BAR_Y - 2, '#ffffff', { align: 'center', scale: UI_SCALE, maxWidth: space });
+    R.text(label, mid, BAR_Y + 7 * UI_SCALE + 1, '#a0a0c0', { align: 'center', maxWidth: space });
+    return;
+  }
+
+  const k = goal
+    ? Math.min(1, Math.max(0, 1 - (goal.x - player.x) / goal.startDist))
+    : Math.min(1, world.score / stage.goalScore);
   R.rect(BAR_X, BAR_Y, BAR_W, 4, '#ffffff', 0.15);
-  R.rect(BAR_X, BAR_Y, Math.round(BAR_W * k), 4, '#ffb000');
+  R.rect(BAR_X, BAR_Y, Math.round(BAR_W * k), 4, goal ? '#ffb000' : '#a855f7');
   // Tiny flag at the end
   R.rect(BAR_X + BAR_W + 3, BAR_Y - 4, 1, 9, '#aaaaaa');
-  R.rect(BAR_X + BAR_W + 4, BAR_Y - 4, 5, 4, goal.flash ? '#ffd700' : '#ff6600');
+  R.rect(BAR_X + BAR_W + 4, BAR_Y - 4, 5, 4, goal?.flash ? '#ffd700' : '#ff6600');
 
-  if (goalTimer < GOAL_NOTICE_S) {
+  if (goal && goalTimer < GOAL_NOTICE_S) {
     R.save();
     R.alpha *= Math.min(1, (GOAL_NOTICE_S - goalTimer) / 0.5);
-    R.text(t('hud.goal'), BAR_X + BAR_W / 2, BAR_Y + 9, '#ffb000', { align: 'center', scale: UI_SCALE, maxWidth: space });
+    R.text(t('hud.goal'), mid, BAR_Y + 9, '#ffb000', { align: 'center', scale: UI_SCALE, maxWidth: space });
     R.restore();
+  } else if (!goal) {
+    R.text(t('stage.short', { n: stage.id }), mid, BAR_Y + 8, '#a0a0c0', { align: 'center', maxWidth: space });
   }
+}
+
+// ===== CAPTION (biome intro, storm warning, power picked) =====
+export function drawCaption() {
+  const c = world.caption;
+  if (!c) return;
+  const s = UI_SCALE;
+  const a = Math.min(1, c.life / 0.4, (c.maxLife - c.life) / 0.2 + 0.2);
+  const y = 72;
+  R.save();
+  R.alpha *= a;
+  const h = c.sub ? 7 * (s + 1) + 7 * s + 14 : 7 * (s + 1) + 8;
+  R.rect(0, y - 5, CW, h, '#000000', 0.5);
+  R.text(c.title, CW / 2, y, c.color, { align: 'center', scale: s + 1, maxWidth: CW - 8 });
+  if (c.sub) R.text(c.sub, CW / 2, y + 7 * (s + 1) + 5, '#ffffff', { align: 'center', scale: s, maxWidth: CW - 8 });
+  R.restore();
 }
 
 // ===== COMBO POPUPS =====
