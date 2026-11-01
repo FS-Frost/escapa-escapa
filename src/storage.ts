@@ -1,7 +1,8 @@
+import { detectLang, type Lang } from './i18n';
+import type { Difficulty } from './game/difficulty';
+
 // All localStorage access goes through here. Keys are kept from v1 so existing
 // records, achievements and options survive the migration.
-
-import { detectLang, type Lang } from './i18n';
 
 export interface Options {
   sfxVolume: number;   // 0..100
@@ -11,6 +12,7 @@ export interface Options {
   lang: Lang;
   vibration: boolean;
   reduceMotion: boolean;
+  difficulty: Difficulty;
 }
 export interface RunStats { maxStreak?: number; maxMult?: number; }
 export interface ScoreEntry { name: string; score: number; stats: RunStats; date: number; }
@@ -18,6 +20,11 @@ export interface ScoreEntry { name: string; score: number; stats: RunStats; date
 const KH = 'player2_hiscores', KD = 'player2_daily',
   KA = 'player2_achievements', KO = 'player2_options', KN = 'escapa_playername',
   KT = 'escapa_tutorial_seen';
+
+// Records and daily bests are per difficulty. v1 played with hard rules, so
+// hard keeps the original keys; easy/normal get suffixed ones.
+const scoresKey = (d: Difficulty) => d === 'hard' ? KH : `${KH}_${d}`;
+const dailyKey = (d: Difficulty) => d === 'hard' ? KD : `${KD}_${d}`;
 
 function load<T>(k: string, d: T): T {
   try { return JSON.parse(localStorage.getItem(k) ?? 'null') ?? d; } catch { return d; }
@@ -28,17 +35,17 @@ function save(k: string, v: unknown) {
 const today = () => new Date().toISOString().slice(0, 10);
 
 export const storage = {
-  getScores: (): ScoreEntry[] => load<ScoreEntry[]>(KH, []),
-  saveScore(name: string, score: number, stats: RunStats) {
-    const list = this.getScores();
+  getScores: (d: Difficulty): ScoreEntry[] => load<ScoreEntry[]>(scoresKey(d), []),
+  saveScore(d: Difficulty, name: string, score: number, stats: RunStats) {
+    const list = this.getScores(d);
     list.push({ name, score, stats, date: Date.now() });
     list.sort((a, b) => b.score - a.score);
-    save(KH, list.slice(0, 5));
+    save(scoresKey(d), list.slice(0, 5));
   },
-  getDailyBest: (): number => load<Record<string, number>>(KD, {})[today()] || 0,
-  saveDailyBest(score: number) {
-    const d = load<Record<string, number>>(KD, {});
-    if (score > (d[today()] || 0)) { d[today()] = score; save(KD, d); }
+  getDailyBest: (d: Difficulty): number => load<Record<string, number>>(dailyKey(d), {})[today()] || 0,
+  saveDailyBest(d: Difficulty, score: number) {
+    const all = load<Record<string, number>>(dailyKey(d), {});
+    if (score > (all[today()] || 0)) { all[today()] = score; save(dailyKey(d), all); }
   },
   getAchievements: () => load<Record<string, number>>(KA, {}),
   unlockAchievement(id: string): boolean {
@@ -55,6 +62,7 @@ export const storage = {
       lang: detectLang(),
       vibration: true,
       reduceMotion: matchMedia('(prefers-reduced-motion: reduce)').matches,
+      difficulty: 'normal',
       ...saved,
     };
   },

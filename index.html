@@ -25,6 +25,14 @@
           <label for="menu-name-input" class="menu-name-label" data-i18n="menu.nameLabel"></label>
           <input id="menu-name-input" type="text" maxlength="12" autocomplete="off" data-i18n-placeholder="defaultName">
         </div>
+        <div class="menu-name-row">
+          <span class="menu-name-label" data-i18n="stats.difficulty"></span>
+          <div id="diff-select" class="seg" role="group">
+            <button data-diff="easy" data-i18n="diff.easy"></button>
+            <button data-diff="normal" data-i18n="diff.normal"></button>
+            <button data-diff="hard" data-i18n="diff.hard"></button>
+          </div>
+        </div>
         <button id="btn-start" class="btn btn-primary" data-i18n="menu.play"></button>
         <button id="btn-hiscores-menu" class="btn" data-i18n="menu.records"></button>
         <button id="btn-options-menu" class="btn" data-i18n="menu.options"></button>
@@ -138,6 +146,11 @@
     <div id="overlay-hiscore" class="overlay hidden">
       <div class="panel">
         <h2 data-i18n="records.title"></h2>
+        <div id="records-tabs" class="seg" role="group">
+          <button data-diff="easy" data-i18n="diff.easy"></button>
+          <button data-diff="normal" data-i18n="diff.normal"></button>
+          <button data-diff="hard" data-i18n="diff.hard"></button>
+        </div>
         <div id="scores-list" class="scores-list"></div>
         <button id="btn-close-hiscores" class="btn" data-i18n="records.close"></button>
       </div>
@@ -156,10 +169,11 @@
     <button id="tutorial-skip" data-i18n="tut.skip"></button>
   </div>
 
-  <!-- Portrait notice (touch devices only, via CSS) -->
-  <div id="rotate-notice">
-    <div class="rotate-icon">📱</div>
-    <p data-i18n="rotate"></p>
+  <!-- Lane pad, portrait only (via body.portrait): big thumb buttons -->
+  <div id="touch-pad">
+    <button class="pad-btn" data-lane="2" data-i18n="pad.up"></button>
+    <button class="pad-btn" data-lane="1" data-i18n="pad.mid"></button>
+    <button class="pad-btn" data-lane="0" data-i18n="pad.down"></button>
   </div>
 
   <script type="module" src="/src/main.ts"></script>

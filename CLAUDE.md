@@ -16,22 +16,23 @@ Deploy: `.github/workflows/deploy.yml` builds and publishes to GitHub Pages on e
 ## Layout
 
 ```
-index.html              — Shell + DOM overlays (menu, pause, options, results, rotate notice)
+index.html              — Shell + DOM overlays (menu, pause, options, results) + portrait lane pad
 src/main.ts             — Boot: language, renderer, UI/input binding, layout, game loop
-src/constants.ts        — CW/CH, LANE_Y, LANE_GAP, speeds, jump timing, P
+src/constants.ts        — CH, live CW/PORTRAIT/PAUSE_INSET (setView), LANE_Y, LANE_GAP, speeds, jump timing, P
 src/i18n.ts             — es/en dictionaries, t(), applyDomI18n()
 src/storage.ts          — The only localStorage access point
 src/audio.ts            — Web Audio synth SFX + procedural music (theme per biome, step sequencer)
 src/haptics.ts          — Vibration API patterns
 src/input.ts            — Keyboard, tap-to-lane pointer input, auto-pause hooks
 src/ui.ts               — setState(), overlays, options panel, pause confirm, results
-src/style.css           — Overlay/panel styles, touch/safe-area handling, rotate notice
+src/style.css           — Overlay/panel styles, touch/safe-area handling, portrait pad
 src/gfx/renderer.ts     — Batched WebGL2 renderer (`R`): rect, gradientV, tri, circle, radial, line, text
 src/gfx/pixelFont.ts    — Procedural 5×7 bitmap font (uppercase + accents + ♥ ★)
 src/gfx/color.ts        — Color parsing (#hex / rgba() strings, or RGBA tuples)
 src/game/world.ts       — STATE enum + the single mutable `world` object, displayName()
 src/game/player.ts      — Player type, moveToLane(), laneAtY(), updatePlayerMotion()
-src/game/obstacles.ts   — Obstacle data/update/draw, SPAWN_PATTERNS, spawner, goal
+src/game/obstacles.ts   — Obstacle data/update/draw, SPAWN_PATTERNS, fair spawner + warm-up, opening seed, goal
+src/game/difficulty.ts  — Easy/Normal/Hard RULES (lives, speed, spawn interval)
 src/game/particles.ts   — Particle spawners + update/draw
 src/game/sprites.ts     — drawPlayer/Zombie/Spike/Bat/Ghost/Orb/GoalFlag
 src/game/biomes.ts      — BIOMES, city/forest/sky drawers, crossfade
@@ -42,9 +43,9 @@ src/game/tutorial.ts    — Interactive tutorial steps (up → down → radar �
 
 ## Rendering
 
-- Everything is drawn through `R` (`src/gfx/renderer.ts`) into a 480×270 framebuffer, then a present pass upscales it to the screen with nearest filtering. Post-processing effects belong in that present pass (`PRESENT_FS`).
+- Everything is drawn through `R` (`src/gfx/renderer.ts`) into a CW×270 framebuffer (CW follows the screen aspect), then a present pass upscales it to the screen with nearest filtering. Post-processing effects belong in that present pass (`PRESENT_FS`).
 - `R` is canvas-like but minimal: `save/restore/translate` and `R.alpha` (multiplied into every draw). No rotation/scale.
-- Never change the logical resolution (480×270). `layout()` in `main.ts` only sizes the wrapper and the canvas backing store (device pixels).
+- **Logical size:** height is always `CH = 270`; width `CW` is set by `layout()` (`main.ts`) from the screen aspect, clamped to `[MIN_CW, MAX_CW]` = [320, 640] (320 in portrait). `CW`, `PORTRAIT` and `PAUSE_INSET` are `export let` live bindings updated on resize/rotation: always read them at runtime, never cache them in module-level constants. Anything spanning the screen must scale with `CW` (e.g. `fill()` counts in `biomes.ts`).
 - Text is **only** the pixel font via `R.text(str, x, y, color, { scale, align, baseline, shadow })`. Unknown characters render as `?`; add glyphs to `pixelFont.ts` (emoji are not supported on canvas — use them only in DOM).
 
 ## Important Invariants
@@ -57,7 +58,7 @@ src/game/tutorial.ts    — Interactive tutorial steps (up → down → radar �
 - **Retargeting mid-jump is allowed:** `moveToLane()` restarts the arc from the current Y (`fromY`); there is no input lock. Jump duration and arc height scale with √(distance in lanes).
 - **`obs.passed` / `obs.scored`** prevent double-counting.
 - **Obstacles spawn off-screen at `PLAYER_X + SPAWN_AHEAD`** and the radar maps exactly `[player.x, player.x + SPAWN_AHEAD]` to its width, so it previews what is coming. Change both together via `SPAWN_AHEAD`.
-- **The DOM pause button covers the top-right corner** while playing: keep canvas HUD out of the last `PAUSE_BTN_INSET` px (`hud.ts`).
+- **The DOM pause button covers the top-right corner** while playing: keep canvas HUD out of the last `PAUSE_INSET` logical px (computed in `layout()` from the button size and CSS scale).
 - **State changes go through `setState()`** (`ui.ts`); it toggles overlays, the `.playing` class, resets the pause confirmation and closes options when play resumes.
 - **All UI text goes through i18n.** DOM uses `data-i18n`, `data-i18n-placeholder`, `data-i18n-aria`; canvas uses `t()`. Every key must exist in both `es` and `en` (`en` is typed as `Record<Key, string>`, so a missing key fails the build).
 - **Player name:** `world.playerName` is the raw input (may be empty); display it with `displayName()`, which falls back to the localized default.
@@ -66,10 +67,12 @@ src/game/tutorial.ts    — Interactive tutorial steps (up → down → radar �
 ## Design Decisions
 
 - **Touch input = tap-to-lane:** `pointerdown` anywhere on the page (letterbox bars included) jumps to the lane nearest to the touch Y. No swipe/drag. Keyboard ↑/Space/↓ steps one lane.
-- **Control feedback:** right-edge lane tabs (target lane lit), a brief glow over the chosen lane's tap zone (`world.laneFlash`, set in `moveToLane`) and a landing outline while jumping. No on-screen buttons.
+- **Control feedback:** right-edge lane tabs (target lane lit), a brief glow over the chosen lane's tap zone (`world.laneFlash`, set in `moveToLane`) and a landing outline while jumping. On-screen buttons only in portrait (the lane pad).
 - **Tutorial:** offered once, the first time JUGAR is pressed (`escapa_tutorial_seen`), and replayable from Options when it was opened from the menu. It runs inside a normal PLAYING run with `world.tutorial` set: the spawner is off, avoided obstacles give no score and hits cost no HP (`logic.ts` routes them to `tutorial.ts`). Input during the radar step only advances the step (`tutorialConsumesInput`). Prompts use `world.inputMode` (`touch` | `keys`, last input kind).
 - **Goal cue is quiet on purpose:** one `goalAppear` chime, a 2.5 s notice that fades into a progress bar, a snare roll layered on the music (`rushLayer`, grows with intensity) and soft 3-2-1 `countdown` beeps. Never reintroduce a repeating alarm.
-- **Orientation:** landscape 16:9 only; touch devices in portrait get a rotate notice and the run auto-pauses (also on tab hide).
+- **Orientation:** both work and rotating mid-run just re-lays out (no pause). Landscape: the world widens to fill the screen. Portrait: game view on top (320×270) and a three-button lane pad below (`#touch-pad`, `.pad-btn[data-lane]`); taps below the canvas belong to the pad. Overlays are `position: fixed` so menus fit either way. The run auto-pauses only when the tab is hidden.
+- **Difficulty:** `RULES` in `difficulty.ts` — easy 5 lives / 0.85× speed / 1.2× interval, normal 3 lives, hard 1 life (orb can raise to 2 = the original v1 rules). Health orbs refill up to `maxHp`. 1.5 s blinking grace period after a hit.
+- **Spawner fairness:** the first `WARMUP_S` seconds only spawn single obstacles with longer intervals; runs start with three easy obstacles already on the road (`seedOpening`); a pattern is rejected if, within `FAIR_WINDOW_S` of travel around the spawn point, it would leave no free lane.
 - **Targets:** Android Chrome + iOS Safari. iOS has no Vibration API (option hidden) and no element fullscreen on iPhone (button hidden). iOS unlocks audio on `pointerup`/`click`, not `pointerdown`.
 - **Phases:** Phase 1 (port + touch + deploy + i18n/options) is done, plus music, radar look-ahead, control feedback and the tutorial. Next: new mechanics, post-processing/shader effects.
 - **Persistence:** localStorage keys from v1 are kept forever; new option fields fall back to defaults when missing.
@@ -113,17 +116,17 @@ src/game/tutorial.ts    — Interactive tutorial steps (up → down → radar �
 |-----|---------|
 | `escapa_playername` | Last entered player name (plain string, may be empty) |
 | `escapa_tutorial_seen` | `'1'` once the tutorial was offered (accepted, skipped or finished) |
-| `player2_hiscores` | Top-5 `{ name, score, stats, date }` |
-| `player2_daily` | Daily best by `YYYY-MM-DD` (UTC) key |
+| `player2_hiscores` / `player2_hiscores_easy` / `player2_hiscores_normal` | Top-5 `{ name, score, stats, date }` per difficulty; the unsuffixed key is **hard** (v1 records were played with hard rules) |
+| `player2_daily` (+ `_easy` / `_normal`) | Daily best by `YYYY-MM-DD` (UTC) key, per difficulty (unsuffixed = hard) |
 | `player2_achievements` | Unlocked achievement timestamps |
-| `player2_options` | `{ sfxVolume, musicVolume, showRadar, mute, lang, vibration, reduceMotion }` (a v1 `volume` field migrates to `sfxVolume`) |
+| `player2_options` | `{ sfxVolume, musicVolume, showRadar, mute, lang, vibration, reduceMotion, difficulty }` (a v1 `volume` field migrates to `sfxVolume`) |
 
 All access goes through `storage.ts`. Never call `localStorage` directly elsewhere.
 
 ## Pixel Art Conventions
 
 - `P = 2` — one art pixel = 2×2 logical pixels. Sprites use `px(col, row, w, h, color)` after `R.translate()` to the sprite origin.
-- Logical resolution is always 480×270; the present pass uses nearest filtering. Never add smoothing.
+- Logical height is always 270 (width varies, see Rendering); the present pass uses nearest filtering. Never add smoothing.
 
 ## Testing Tips
 

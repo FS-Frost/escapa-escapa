@@ -1,4 +1,4 @@
-import { CW, CH, RADAR_H, LANE_COUNT, LANE_GAP, LANE_Y, P, SPAWN_AHEAD } from '../constants';
+import { CW, CH, RADAR_H, LANE_COUNT, LANE_GAP, LANE_Y, P, SPAWN_AHEAD, PAUSE_INSET } from '../constants';
 import { LANE_FLASH_DUR } from './player';
 import { R } from '../gfx/renderer';
 import { world, displayName } from './world';
@@ -11,13 +11,11 @@ const RADAR_COLORS: Record<ObsType, string> = {
   ghost: '#88DDFF', pit: '#FF8800', orb: '#FFD700',
 };
 const LANE_ROW_Y = [18, 11, 4]; // bottom/mid/top within radar strip
-// The DOM pause button overlaps the top-right corner while playing; keep the
-// radar scale and the HUD hearts left of it.
-const PAUSE_BTN_INSET = 40;
-const RADAR_X0 = 4, RADAR_W = CW - RADAR_X0 - PAUSE_BTN_INSET;
+const RADAR_X0 = 4;
+const radarW = () => CW - RADAR_X0 - PAUSE_INSET; // CW changes with the screen
 
 // Distance ahead of the player (0..SPAWN_AHEAD) → radar x across the full strip.
-const radarX = (dist: number) => RADAR_X0 + Math.floor(Math.min(1, Math.max(0, dist / SPAWN_AHEAD)) * RADAR_W);
+const radarX = (dist: number) => RADAR_X0 + Math.floor(Math.min(1, Math.max(0, dist / SPAWN_AHEAD)) * radarW());
 
 export function drawRadar() {
   if (!world.opts.showRadar && !world.tutorial) return; // the tutorial explains it
@@ -45,6 +43,10 @@ export function drawRadar() {
 
 // ===== HUD =====
 const MULT_COLORS = ['', '', '#ffd700', '#ff8c00', '#ff4500'];
+const HEART_STEP = 16;
+const NAME_MIN_CW = 420;
+const SCORE_AREA_W = 76; // left HUD column (score, multiplier, streak)
+const heartsLeftX = () => CW - PAUSE_INSET - (world.player.maxHp - 1) * HEART_STEP - 14;
 
 export function drawHUD() {
   const { player, score, hiScore } = world;
@@ -57,13 +59,15 @@ export function drawHUD() {
     R.text(t('hud.streak', { n: player.comboStreak }), 6, RADAR_H + 33, '#88ddff');
   }
 
-  const hx = CW - PAUSE_BTN_INSET;
+  const hx = CW - PAUSE_INSET;
   for (let i = 0; i < player.maxHp; i++) {
-    R.text('♥', hx - i * 18, RADAR_H + 5, i < player.hp ? '#ff4466' : '#442233', { scale: 2, align: 'right' });
+    R.text('♥', hx - i * HEART_STEP, RADAR_H + 5, i < player.hp ? '#ff4466' : '#442233', { scale: 2, align: 'right' });
   }
-  R.text(displayName(), hx - player.maxHp * 18 - 4, RADAR_H + 9, '#aaaacc', { align: 'right' });
+  const heartsLeft = heartsLeftX();
+  // Narrow screens (portrait) drop the name before it collides with the goal bar
+  if (CW >= NAME_MIN_CW) R.text(displayName(), heartsLeft - 4, RADAR_H + 9, '#aaaacc', { align: 'right' });
 
-  if (world.goalApproaching) drawGoalProgress();
+  if (world.goalApproaching) drawGoalProgress(heartsLeft);
 
   if (score >= hiScore && score > 0) {
     // Sits above the achievement banner while it is showing
@@ -73,12 +77,16 @@ export function drawHUD() {
 
 // ===== GOAL PROGRESS =====
 const GOAL_NOTICE_S = 2.5;
-const BAR_W = 140, BAR_X = (CW - BAR_W) / 2, BAR_Y = RADAR_H + 6;
+const BAR_Y = RADAR_H + 6;
 
-// Brief notice when the goal appears, then a quiet bar that fills up to the flag.
-function drawGoalProgress() {
+// Brief notice when the goal appears, then a quiet bar that fills up to the
+// flag, centered in the free space between the score column and the hearts.
+function drawGoalProgress(heartsLeft: number) {
   const { goal, player, goalTimer } = world;
   if (!goal) return;
+  const space = heartsLeft - 14 - SCORE_AREA_W; // keep room for the flag
+  const BAR_W = Math.max(40, Math.min(140, space));
+  const BAR_X = Math.round(SCORE_AREA_W + (space - BAR_W) / 2);
   const k = Math.min(1, Math.max(0, 1 - (goal.x - player.x) / goal.startDist));
   R.rect(BAR_X, BAR_Y, BAR_W, 4, '#ffffff', 0.15);
   R.rect(BAR_X, BAR_Y, Math.round(BAR_W * k), 4, '#ffb000');
@@ -89,7 +97,7 @@ function drawGoalProgress() {
   if (goalTimer < GOAL_NOTICE_S) {
     R.save();
     R.alpha *= Math.min(1, (GOAL_NOTICE_S - goalTimer) / 0.5);
-    R.text(t('hud.goal'), CW / 2, BAR_Y + 9, '#ffb000', { align: 'center' });
+    R.text(t('hud.goal'), BAR_X + BAR_W / 2, BAR_Y + 9, '#ffb000', { align: 'center' });
     R.restore();
   }
 }

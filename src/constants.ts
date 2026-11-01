@@ -1,4 +1,18 @@
-export const CW = 480, CH = 270;
+// Logical height is fixed; logical width follows the screen's aspect ratio
+// (set by layout() in main.ts). `export let` is a live binding: importers
+// always read the current value, so read CW at runtime, never cache it.
+export const CH = 270;
+export const MIN_CW = 320, MAX_CW = 640;
+export let CW = 480;
+export let PORTRAIT = false; // game view on top + lane pad below
+// Logical px covered by the DOM pause button at the top-right corner; canvas
+// HUD (radar scale, hearts) stays left of it. Depends on the CSS scale.
+export let PAUSE_INSET = 40;
+export function setView(width: number, portrait: boolean, pauseInset: number) {
+  CW = width;
+  PORTRAIT = portrait;
+  PAUSE_INSET = pauseInset;
+}
 export const RADAR_H = 26;
 export const LANE_Y = [210, 160, 110] as const;
 export const LANE_COUNT = 3;

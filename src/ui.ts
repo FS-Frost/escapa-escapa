@@ -5,6 +5,7 @@ import { t, setLang, LANGS, type Key, type Lang } from './i18n';
 import { world, displayName, STATE, type State } from './game/world';
 import { startGame } from './game/logic';
 import { endTutorial } from './game/tutorial';
+import type { Difficulty } from './game/difficulty';
 import { biomeTheme } from './game/biomes';
 
 // DOM overlays (menus, pause, options, results). Gameplay is all on the canvas.
@@ -74,10 +75,8 @@ async function toggleFullscreen() {
     if (document.fullscreenElement) {
       await document.exitFullscreen();
     } else {
+      // No orientation lock: the layout adapts to both orientations.
       await document.documentElement.requestFullscreen({ navigationUI: 'hide' });
-      // Android lets fullscreen pages lock orientation; ignore where unsupported.
-      const orientation = screen.orientation as ScreenOrientation & { lock?: (o: string) => Promise<void> };
-      await orientation.lock?.('landscape').catch(() => {});
     }
   } catch { /* denied or unsupported */ }
 }
@@ -107,13 +106,15 @@ function el(tag: string, cls: string, text: string | number) {
 }
 
 function renderStats(target: HTMLElement) {
+  const diff = world.opts.difficulty;
   const rows: [Key, string | number][] = [
+    ['stats.difficulty', t(`diff.${diff}`)],
     ['stats.score', world.score],
     ['stats.maxStreak', world.runStats.maxStreak ?? 0],
     ['stats.mult', 'x' + (world.runStats.maxMult ?? 1)],
     ['stats.time', Math.floor(world.gameTime) + 's'],
     ['stats.worlds', world.currentBiome + 1],
-    ['stats.daily', storage.getDailyBest()],
+    ['stats.daily', storage.getDailyBest(diff)],
   ];
   target.replaceChildren(...rows.map(([k, v]) => {
     const row = el('div', 'stat-row', '');
@@ -123,8 +124,9 @@ function renderStats(target: HTMLElement) {
 }
 
 function saveRun() {
-  storage.saveDailyBest(world.score);
-  storage.saveScore(displayName(), world.score, world.runStats);
+  const diff = world.opts.difficulty;
+  storage.saveDailyBest(diff, world.score);
+  storage.saveScore(diff, displayName(), world.score, world.runStats);
 }
 
 export function showDeadScreen() {
@@ -145,8 +147,18 @@ export function showVictoryScreen() {
   }, 2500);
 }
 
-function renderScoresList() {
-  const scores = storage.getScores();
+// ===== DIFFICULTY SELECTORS =====
+// Segmented buttons ([data-diff]) inside a container; marks the selected one.
+function markSelected(containerId: string, diff: Difficulty) {
+  for (const b of $(containerId).querySelectorAll<HTMLButtonElement>('[data-diff]')) {
+    b.setAttribute('aria-pressed', String(b.dataset.diff === diff));
+  }
+}
+
+// Records are kept per difficulty; the tabs default to the current one.
+function renderScoresList(diff: Difficulty = world.opts.difficulty) {
+  markSelected('records-tabs', diff);
+  const scores = storage.getScores(diff);
   const medals = ['🥇', '🥈', '🥉'];
   const list = $('scores-list');
   if (!scores.length) {
@@ -162,6 +174,13 @@ function renderScoresList() {
     );
     return row;
   }));
+}
+
+// Portrait pad: light up the button of the lane the cube is heading to.
+const padButtons = () => document.querySelectorAll<HTMLButtonElement>('.pad-btn');
+export function syncPad() {
+  const target = world.player.targetLane;
+  for (const b of padButtons()) b.classList.toggle('target', Number(b.dataset.lane) === target);
 }
 
 // ===== BINDINGS =====
@@ -182,6 +201,19 @@ export function bindUI() {
   nameInput.addEventListener('keydown', e => {
     if (e.key === 'Enter') $('btn-start').click();
   });
+
+  // Difficulty: selector in the main menu, tabs in the records screen
+  markSelected('diff-select', opts.difficulty);
+  for (const b of $('diff-select').querySelectorAll<HTMLButtonElement>('[data-diff]')) {
+    b.addEventListener('click', () => {
+      opts.difficulty = b.dataset.diff as Difficulty;
+      markSelected('diff-select', opts.difficulty);
+      saveOpts();
+    });
+  }
+  for (const b of $('records-tabs').querySelectorAll<HTMLButtonElement>('[data-diff]')) {
+    b.addEventListener('click', () => renderScoresList(b.dataset.diff as Difficulty));
+  }
 
   const toMenu = () => setState(STATE.MENU);
   const play = () => startGame();

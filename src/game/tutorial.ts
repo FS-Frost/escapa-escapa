@@ -27,6 +27,7 @@ let onFinish: () => void = () => {};
 // `finish` resets the run so the real game starts clean.
 export function startTutorial(finish: () => void) {
   onFinish = finish;
+  world.obstacles = []; // drop the opening obstacles of the run
   world.tutorial = { step: 'up', t: 0, retry: 0 };
 }
 

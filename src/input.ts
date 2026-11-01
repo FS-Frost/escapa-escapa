@@ -1,4 +1,4 @@
-import { CH } from './constants';
+import { CH, PORTRAIT } from './constants';
 import { audio } from './audio';
 import { world, STATE } from './game/world';
 import { moveToLane, laneAtY } from './game/player';
@@ -34,15 +34,26 @@ export function bindInput(canvas: HTMLCanvasElement) {
     world.inputMode = 'touch';
     if (tutorialConsumesInput()) return;
     const rect = canvas.getBoundingClientRect();
+    // In portrait the area below the game belongs to the pad (gaps included)
+    if (PORTRAIT && e.clientY > rect.bottom) return;
     const y = (e.clientY - rect.top) / rect.height * CH;
     moveToLane(laneAtY(y));
   }, { passive: false });
 
+  // Portrait lane pad: each button jumps straight to its lane.
+  for (const btn of document.querySelectorAll<HTMLButtonElement>('.pad-btn')) {
+    btn.addEventListener('pointerdown', e => {
+      e.preventDefault();
+      if (world.state !== STATE.PLAYING) return;
+      world.inputMode = 'touch';
+      if (tutorialConsumesInput()) return;
+      moveToLane(Number(btn.dataset.lane));
+    });
+  }
+
   // iOS only unlocks audio on pointerup/touchend/click, not pointerdown.
   window.addEventListener('pointerup', () => audio.init());
 
-  // Mobile: stop the run when the app is backgrounded or rotated to portrait.
+  // Stop the run when the app is backgrounded. Rotation just re-lays out.
   document.addEventListener('visibilitychange', () => { if (document.hidden) pauseIfPlaying(); });
-  const portrait = matchMedia('(orientation: portrait) and (pointer: coarse)');
-  portrait.addEventListener('change', () => { if (portrait.matches) pauseIfPlaying(); });
 }

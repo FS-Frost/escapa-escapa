@@ -6,7 +6,8 @@ import { t } from '../i18n';
 import { storage } from '../storage';
 import { world, STATE } from './world';
 import { createPlayer, updatePlayerMotion } from './player';
-import { type Obstacle, updateObstacle, drawObstacle, updateSpawner, spawnGoal, updateGoal, drawGoal } from './obstacles';
+import { RULES } from './difficulty';
+import { type Obstacle, updateObstacle, drawObstacle, updateSpawner, spawnGoal, updateGoal, drawGoal, seedOpening } from './obstacles';
 import { spawnSparkles, spawnHitStars, spawnTrail, updateParticles, drawParticles } from './particles';
 import { drawPlayer } from './sprites';
 import { drawBackground, updateBiomes, biomeTheme } from './biomes';
@@ -66,12 +67,15 @@ function rectOverlap(ax: number, ay: number, aw: number, ah: number, bx: number,
   return ax2 < bx + bw && ax2 + aw2 > bx && ay2 < by + bh && ay2 + ah2 > by;
 }
 
+const INVINCIBLE_S = 1.5; // grace period after a hit (the cube blinks)
+
 function hitPlayer() {
   const p = world.player;
   if (p.invincible > 0) return;
   p.hp--;
+  p.hitsTaken++;
   p.hitFlash = 0.3;
-  p.invincible = 1.2;
+  p.invincible = INVINCIBLE_S;
   p.comboStreak = 0;
   p.comboMultiplier = 1;
   world.shakeDur = 0.25;
@@ -94,7 +98,7 @@ function triggerVictory() {
   setState(STATE.VICTORY);
   achievementsCheck('first_escape');
   const p = world.player;
-  if (p.hp === 1 && p.maxHp > 1) achievementsCheck('comeback');
+  if (p.hp === 1 && p.hitsTaken > 0) achievementsCheck('comeback'); // won on the last heart after losing some
   showVictoryScreen();
 }
 
@@ -124,9 +128,8 @@ function checkCollisions() {
 
     if (obs.type === 'orb') {
       if (rectOverlap(px, py, p.w, p.h, obs.x, obs.y - obs.h / 2, obs.w, obs.h)) {
-        if (p.hp < 2) {
-          p.hp = Math.min(2, p.hp + 1);
-          p.maxHp = Math.max(p.maxHp, 2);
+        if (p.hp < p.maxHp) {
+          p.hp++;
           audio.play('powerup');
           haptics.play('powerup');
           spawnSparkles(obs.x, obs.y, 12);
@@ -173,11 +176,12 @@ export function startGame(withTutorial = false) {
 }
 
 function resetRun() {
+  const diff = world.opts.difficulty, rules = RULES[diff];
   Object.assign(world, {
-    player: createPlayer(),
+    player: createPlayer(rules.lives, rules.maxLives),
     score: 0,
-    hiScore: storage.getScores()[0]?.score || 0,
-    scrollSpeed: BASE_SPEED,
+    hiScore: storage.getScores(diff)[0]?.score || 0,
+    scrollSpeed: BASE_SPEED * rules.speed,
     worldX: 0,
     gameTime: 0,
     obstacles: [],
@@ -198,6 +202,7 @@ function resetRun() {
     tutorial: null,
     runStats: { maxStreak: 0, maxMult: 1 },
   });
+  seedOpening();
 }
 
 // ===== GAME LOOP =====
@@ -283,7 +288,12 @@ export function render() {
     for (const o of w.obstacles) if (o.lane < p.targetLane) drawObstacle(o);
     drawLandingGhost();
     const flash = p.hitFlash > 0 && !w.opts.reduceMotion && Math.floor(p.hitFlash * 12) % 2 === 0;
-    drawPlayer(p.x, p.y, p.expression, flash, p.maxHp > 1);
+    // Blink + gold border during the post-hit grace period
+    const blink = p.invincible > 0 && p.hitFlash <= 0 && !w.opts.reduceMotion && Math.floor(p.invincible * 10) % 2 === 0;
+    R.save();
+    if (blink) R.alpha *= 0.35;
+    drawPlayer(p.x, p.y, p.expression, flash, p.invincible > 0);
+    R.restore();
     for (const o of w.obstacles) if (o.lane >= p.targetLane) drawObstacle(o);
   }
 

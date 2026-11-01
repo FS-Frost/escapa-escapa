@@ -10,8 +10,8 @@ Pixel-art auto-scroller built with Vite + TypeScript + WebGL2. No game engine an
 
 ### Canvas vs DOM
 
-- **WebGL2 canvas (480×270 logical pixels)** renders all live gameplay: background, obstacles, player, particles, HUD, radar.
-- **DOM overlays** (`position: absolute` over the canvas) render text-heavy menus: main menu, pause, options, game over, victory, high scores, plus the portrait "rotate" notice.
+- **WebGL2 canvas (CW×270 logical pixels, CW = 320–640)** renders all live gameplay: background, obstacles, player, particles, HUD, radar.
+- **DOM overlays** (`position: fixed` over the viewport) render text-heavy menus: main menu, pause, options, game over, victory, high scores, tutorial offer. In portrait a DOM lane pad sits below the canvas.
 
 DOM menus stay accessible and readable at any size; the canvas keeps the pixel look.
 
@@ -20,7 +20,7 @@ DOM menus stay accessible and readable at any size; the canvas keeps the pixel l
 ```
 game draw calls (R.rect / R.circle / R.text …)
   └─ batched vertex-colored triangles (one draw call per frame, typically)
-       └─ 480×270 offscreen framebuffer (RGBA8)
+       └─ CW×270 offscreen framebuffer (RGBA8, reallocated when CW changes)
             └─ present pass: full-screen triangle, nearest sampling → canvas at device resolution
 ```
 
@@ -36,7 +36,12 @@ A procedural 5×7 bitmap font (`src/gfx/pixelFont.ts`) is defined as `#`/`.` row
 
 ### Coordinate System & Layout
 
-Fixed logical resolution of 480×270 (16:9). `layout()` fits the game into the viewport minus safe-area insets, sizes the wrapper in CSS pixels, and sets the canvas backing store to CSS size × devicePixelRatio (capped at 3). Screen shake is a renderer translation, never a CSS transform.
+Logical height is fixed at 270; logical width `CW` adapts. `layout()` (on load, resize and rotation) works on the viewport minus safe-area insets:
+
+- **Landscape** (width ≥ height): `CW = round(270 · aspect)` clamped to [320, 640], scaled to fill. A 19.5:9 phone gets CW ≈ 585 (more road ahead, no black bars); wider than 640 letterboxes.
+- **Portrait:** `CW = 320`, the canvas spans the full width at the top (at most 62% of the height), and the lane pad fills the rest.
+
+It then sizes the wrapper in CSS pixels, computes `PAUSE_INSET` (logical px covered by the pause button) and sets the canvas backing store to CSS size × devicePixelRatio (capped at 3). Screen shake is a renderer translation, never a CSS transform.
 
 ### Game Loop
 
@@ -72,7 +77,8 @@ MENU → PLAYING ←→ PAUSED
 
 - **Touch / mouse:** `pointerdown` anywhere on the page (letterbox bars included) maps the pointer Y to logical Y and jumps to the nearest lane (`laneAtY` → `moveToLane`). Taps on buttons, inputs and overlays are ignored.
 - **Keyboard:** `↑`/`Space` and `↓` move one lane from `targetLane`; `P`/`Esc` pause.
-- **Auto-pause:** when the page is hidden, or a touch device rotates to portrait.
+- **Portrait pad:** three big buttons (▲ up, ● middle, ▼ down) jump straight to their lane; the target lane's button is lit. Taps below the canvas that miss a button are ignored.
+- **Auto-pause:** only when the page is hidden. Rotation re-lays out and the run continues.
 - **iOS audio unlock:** `audio.init()` also runs on `pointerup`, since iOS doesn't count `pointerdown` as a user activation.
 - **Gestures:** `touch-action: none` and `user-select: none` on the body stop scroll, zoom and selection; overlay panels allow vertical panning.
 - **Feedback:** three tabs with a left-pointing chevron on the right edge mark the tappable lanes, and the target lane's tab is lit. Choosing a lane (touch or keyboard) makes its tap zone (`LANE_Y ± LANE_GAP/2`, exactly what `laneAtY` uses) glow for 0.3 s. While jumping, an outline shows where the cube will land.
@@ -100,9 +106,31 @@ A bottom→top jump takes ≈0.21 s with a higher arc. A new input during a jump
 
 ## Spawner
 
-Weighted random pattern selection over `SPAWN_PATTERNS`. The spawn interval shrinks with score: `interval = max(0.45, 1.2 − score·0.005) + random(0..0.3)`. If HP is below max, there is a 15% chance to spawn a Big M Orb instead.
+Weighted random pattern selection over `SPAWN_PATTERNS`:
 
-Obstacles spawn off-screen at `PLAYER_X + SPAWN_AHEAD` (1280 px; the screen ends at 480). The spacing between obstacles depends only on the interval and the speed, so the pace is the same as spawning at the screen edge; the first obstacle just takes ~7 s longer to show up.
+```
+interval = max(0.45, 1.2 − score·0.005) · difficulty.interval + warmup · 0.9 + random(0..0.3)
+warmup   = max(0, 1 − gameTime / 20)        // 1 → 0 over the first 20 s
+```
+
+- **Warm-up:** while `warmup > 0`, only single-obstacle ("simple") patterns spawn.
+- **Opening:** each run starts with three simple obstacles already on the road (520 / 780 / 1040 px ahead), so the first seconds aren't empty while spawns travel in.
+- **Fairness:** a candidate pattern is rejected if, together with existing obstacles within `speed · 0.5 s + 40 px` of the spawn point (reaction + the longest jump), it would cover all three lanes. Up to 8 candidates are tried; if none fits, the spawner retries 0.15 s later. Orbs never count as blocking.
+- If HP is below max, there is a 15% chance to spawn a Big M Orb instead.
+
+Obstacles spawn off-screen at `PLAYER_X + SPAWN_AHEAD` (1280 px; the screen ends at CW ≤ 640). The spacing between obstacles depends only on the interval and the speed, so the pace is the same as spawning at the screen edge.
+
+---
+
+## Difficulty
+
+| | Lives | Orb cap | Speed | Spawn interval |
+|---|---|---|---|---|
+| Easy | 5 | 5 | 0.85× | 1.2× |
+| Normal (default) | 3 | 3 | 1× | 1× |
+| Hard | 1 | 2 | 1× | 1× |
+
+Hard is exactly the v1 ruleset, so v1 records live under hard. Records and daily bests are kept per difficulty; the records screen has a tab per difficulty. "Epic comeback" requires winning on the last heart after losing at least one (`hitsTaken > 0`).
 
 ---
 
@@ -114,7 +142,7 @@ The 26 px strip at the top maps the distance ahead of the player, `[0, SPAWN_AHE
 
 ## Collision Detection
 
-AABB with an 18% inset on the player rect for forgiving feel. Pits collide only while `targetLane === 0` and score only if the player is out of the bottom lane when they pass. Other obstacles collide only in `targetLane`; obstacles passing in an adjacent lane trigger a near-miss (scared face + blip). Invincibility lasts 1.2 s after a hit. Collision processing stops as soon as the state leaves PLAYING, so one frame can't produce both death and victory.
+AABB with an 18% inset on the player rect for forgiving feel. Pits collide only while `targetLane === 0` and score only if the player is out of the bottom lane when they pass. Other obstacles collide only in `targetLane`; obstacles passing in an adjacent lane trigger a near-miss (scared face + blip). After a hit the player is invulnerable for 1.5 s (blinking, gold border). Collision processing stops as soon as the state leaves PLAYING, so one frame can't produce both death and victory.
 
 ---
 
@@ -277,10 +305,10 @@ Pause also offers resume, restart and back-to-menu (both destructive actions ask
 |-----|----------|
 | `escapa_playername` | Raw entered name |
 | `escapa_tutorial_seen` | `'1'` once the tutorial was offered |
-| `player2_hiscores` | Top 5 `{ name, score, stats, date }`, sorted desc |
-| `player2_daily` | `{ "YYYY-MM-DD": bestScore }` (UTC date) |
+| `player2_hiscores` (+ `_easy` / `_normal`) | Top 5 `{ name, score, stats, date }` per difficulty, sorted desc; unsuffixed = hard (= v1 rules) |
+| `player2_daily` (+ `_easy` / `_normal`) | `{ "YYYY-MM-DD": bestScore }` (UTC date), per difficulty |
 | `player2_achievements` | `{ achievementId: timestamp }` |
-| `player2_options` | `{ sfxVolume, musicVolume, showRadar, mute, lang, vibration, reduceMotion }` |
+| `player2_options` | `{ sfxVolume, musicVolume, showRadar, mute, lang, vibration, reduceMotion, difficulty }` |
 
 Keys are unchanged from v1. Options missing newer fields fall back to defaults, and the v1 single `volume` becomes `sfxVolume`. All access is wrapped in try/catch so the game degrades silently in private browsing. Record names are rendered with `textContent`, never `innerHTML`.
 
@@ -288,7 +316,7 @@ Keys are unchanged from v1. Options missing newer fields fall back to defaults, 
 
 ## Mobile
 
-- Landscape 16:9 only; portrait on touch devices shows a rotate notice (CSS media query) and auto-pauses.
+- Both orientations; see Coordinate System & Layout. Rotating mid-run keeps playing.
 - The layout respects safe-area insets (`viewport-fit=cover` + body padding).
 - The pause button grows to 44 px on coarse pointers; the HUD hearts and the radar scale end left of it (`PAUSE_BTN_INSET`).
 
@@ -297,7 +325,7 @@ Keys are unchanged from v1. Options missing newer fields fall back to defaults, 
 ## Key Constants
 
 ```ts
-CW = 480, CH = 270          // logical resolution
+CH = 270                    // logical height (CW: 320–640, from the screen aspect)
 RADAR_H = 26                // radar strip height
 PLAYER_X = 80               // player's fixed x
 SPAWN_AHEAD = 1200          // spawn distance ahead of the player = radar range

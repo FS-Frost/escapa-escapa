@@ -1,4 +1,5 @@
-import { CW, LANE_Y, GOAL_TRAVEL_TIME, PLAYER_X, SPAWN_AHEAD } from '../constants';
+import { CW, LANE_Y, LANE_COUNT, GOAL_TRAVEL_TIME, PLAYER_X, SPAWN_AHEAD } from '../constants';
+import { RULES } from './difficulty';
 import { R } from '../gfx/renderer';
 import { world } from './world';
 import { drawZombie, drawSpike, drawBat, drawGhost, drawOrb, drawGoalFlag } from './sprites';
@@ -68,36 +69,70 @@ function drawPit(o: Obstacle) {
 const MIN_INTERVAL = 1.2;
 const at = PLAYER_X + SPAWN_AHEAD;
 
-const SPAWN_PATTERNS: { weight: number; fn: () => Obstacle[] }[] = [
-  { weight: 3, fn: () => [makeObs('zombie', 0, at)] },
-  { weight: 2, fn: () => [makeObs('zombie', 1, at)] },
-  { weight: 2, fn: () => [makeObs('bat', 2, at)] },
-  { weight: 2, fn: () => [makeObs('bat', 1, at)] },
-  { weight: 2, fn: () => [makeObs('spike', 0, at)] },
-  { weight: 1, fn: () => [makeObs('ghost', 2, at)] },
-  { weight: 1, fn: () => [makeObs('pit', 0, at)] },
-  { weight: 1, fn: () => [makeObs('zombie', 1, at), makeObs('bat', 2, at + 10)] },
-  { weight: 1, fn: () => [makeObs('spike', 0, at), makeObs('ghost', 2, at)] },
-];
-const TOTAL_WEIGHT = SPAWN_PATTERNS.reduce((s, p) => s + p.weight, 0);
+interface Pattern { weight: number; simple?: boolean; fn: (x: number) => Obstacle[]; }
 
-function pickPattern(): Obstacle[] {
-  let r = Math.random() * TOTAL_WEIGHT;
-  for (const p of SPAWN_PATTERNS) { r -= p.weight; if (r <= 0) return p.fn(); }
-  return SPAWN_PATTERNS[0].fn();
+const SPAWN_PATTERNS: Pattern[] = [
+  { weight: 3, simple: true, fn: x => [makeObs('zombie', 0, x)] },
+  { weight: 2, simple: true, fn: x => [makeObs('zombie', 1, x)] },
+  { weight: 2, simple: true, fn: x => [makeObs('bat', 2, x)] },
+  { weight: 2, simple: true, fn: x => [makeObs('bat', 1, x)] },
+  { weight: 2, simple: true, fn: x => [makeObs('spike', 0, x)] },
+  { weight: 1, simple: true, fn: x => [makeObs('ghost', 2, x)] },
+  { weight: 1, fn: x => [makeObs('pit', 0, x)] },
+  { weight: 1, fn: x => [makeObs('zombie', 1, x), makeObs('bat', 2, x + 10)] },
+  { weight: 1, fn: x => [makeObs('spike', 0, x), makeObs('ghost', 2, x)] },
+];
+
+// Gentle start: the first WARMUP_S seconds spawn single obstacles, further apart.
+const WARMUP_S = 20;
+const WARMUP_EXTRA_INTERVAL = 0.9;
+// Fairness: around any spawn, obstacles within this time window (reaction +
+// longest jump) must leave at least one lane free.
+const FAIR_WINDOW_S = 0.5;
+const FAIR_RETRY_S = 0.15;
+
+function pick(pool: Pattern[]): Pattern {
+  let r = Math.random() * pool.reduce((s, p) => s + p.weight, 0);
+  for (const p of pool) { r -= p.weight; if (r <= 0) return p; }
+  return pool[0];
+}
+
+// True if adding `candidate` would leave no free lane near its x.
+function blocksAllLanes(candidate: Obstacle[]): boolean {
+  const gap = world.scrollSpeed * world.speedBoost * FAIR_WINDOW_S + 40;
+  const lanes = new Set<number>();
+  for (const o of [...world.obstacles, ...candidate]) {
+    if (o.type !== 'orb' && Math.abs(o.x - at) < gap) lanes.add(o.lane);
+  }
+  return lanes.size >= LANE_COUNT;
 }
 
 export function updateSpawner(dt: number) {
   world.spawnTimer -= dt;
   if (world.spawnTimer > 0) return;
-  const interval = Math.max(0.45, MIN_INTERVAL - world.score * 0.005);
+  const rules = RULES[world.opts.difficulty];
+  const warmup = Math.max(0, 1 - world.gameTime / WARMUP_S);
+  const interval = Math.max(0.45, MIN_INTERVAL - world.score * 0.005) * rules.interval + warmup * WARMUP_EXTRA_INTERVAL;
   world.spawnTimer = interval + Math.random() * 0.3;
+
   // Occasionally spawn a health orb instead when HP < maxHp
   if (world.player.hp < world.player.maxHp && Math.random() < 0.15) {
     world.obstacles.push(makeObs('orb', Math.floor(Math.random() * 3), at));
-  } else {
-    world.obstacles.push(...pickPattern());
+    return;
   }
+  const pool = warmup > 0 ? SPAWN_PATTERNS.filter(p => p.simple) : SPAWN_PATTERNS;
+  for (let tries = 0; tries < 8; tries++) {
+    const obs = pick(pool).fn(at);
+    if (!blocksAllLanes(obs)) { world.obstacles.push(...obs); return; }
+  }
+  world.spawnTimer = FAIR_RETRY_S; // nothing fair fits right now; try again shortly
+}
+
+// Fresh runs start with a few easy obstacles already on the way, so the road
+// isn't empty while the first spawns travel in from SPAWN_AHEAD.
+export function seedOpening() {
+  const simple = SPAWN_PATTERNS.filter(p => p.simple);
+  for (const d of [520, 780, 1040]) world.obstacles.push(...pick(simple).fn(PLAYER_X + d));
 }
 
 // ===== GOAL =====

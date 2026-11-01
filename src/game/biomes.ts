@@ -14,6 +14,8 @@ const GROUND = CH - 28;
 
 // Wrap a scrolling x into [-span, CW + span - span) like the original parallax.
 const wrap = (x: number, span: number) => ((x % (CW + span)) + CW + span) % (CW + span) - span;
+// How many repeating elements spaced `spacing` apart cover the wrap period (CW varies).
+const fill = (spacing: number) => Math.ceil((CW + spacing) / spacing);
 
 // Deterministic 0..1 hash so window lights don't flicker frame to frame.
 function hash(n: number) {
@@ -25,7 +27,7 @@ function drawCity(off: number) {
   R.gradientV(0, RADAR_H, CW, CH - RADAR_H, [[0, '#1a1a2e'], [1, '#16213e']]);
 
   // Far buildings with lit/unlit windows
-  for (let i = 0; i < 12; i++) {
+  for (let i = 0; i < fill(50); i++) {
     const bx = Math.floor(wrap(i * 50 - off * 0.12, 50));
     const bh = 30 + (i % 4) * 18;
     R.rect(bx, GROUND - bh, 28, bh, '#0f3460');
@@ -39,7 +41,7 @@ function drawCity(off: number) {
   }
 
   // Mid buildings
-  for (let i = 0; i < 8; i++) {
+  for (let i = 0; i < fill(70); i++) {
     const bx = Math.floor(wrap(i * 70 + 20 - off * 0.3, 70));
     const bh = 20 + (i % 3) * 12;
     R.rect(bx, GROUND - bh, 35, bh, '#e94560');
@@ -53,7 +55,7 @@ function drawCity(off: number) {
   for (let i = -1; i < CW / 50 + 1; i++) R.rect(i * 50 - markOff, CH - 15, 20, 3, '#ffff00');
 
   // Streetlights
-  for (let i = 0; i < 8; i++) {
+  for (let i = 0; i < fill(80); i++) {
     const lx = Math.floor(wrap(i * 80 - off * 0.6, 80));
     R.rect(lx, CH - 55, 3, 27, '#888888');
     R.rect(lx - 5, CH - 55, 13, 3, '#888888');
@@ -65,14 +67,14 @@ function drawForest(off: number) {
   R.gradientV(0, RADAR_H, CW, CH - RADAR_H, [[0, '#0d2b1a'], [1, '#1a4a2e']]);
 
   // Far trees
-  for (let i = 0; i < 10; i++) {
+  for (let i = 0; i < fill(60); i++) {
     const tx = Math.floor(wrap(i * 60 - off * 0.1, 60));
     R.rect(tx + 10, CH - 85, 8, 57, '#1a4a2e');
     R.tri(tx + 14, CH - 110, tx + 2, CH - 72, tx + 26, CH - 72, '#1a4a2e');
   }
 
   // Mushrooms
-  for (let i = 0; i < 14; i++) {
+  for (let i = 0; i < fill(40); i++) {
     const mx = Math.floor(wrap(i * 40 + 10 - off * 0.35, 40));
     const mh = 8 + (i % 3) * 6;
     R.rect(mx, GROUND - mh, 10, mh, '#2d6e3a');
@@ -123,7 +125,7 @@ function drawSky(off: number) {
   // Mid clouds
   R.save();
   R.alpha *= 0.7;
-  for (let i = 0; i < 6; i++) {
+  for (let i = 0; i < fill(90); i++) {
     const cx = Math.floor(wrap(i * 90 + 15 - off * 0.25, 90));
     const cy = RADAR_H + 40 + (i % 3) * 25;
     R.circle(cx + 20, cy, 18, '#1a2060');
@@ -137,7 +139,7 @@ function drawSky(off: number) {
   R.rect(0, GROUND, CW, 4, '#3a2a6a');
   R.save();
   R.alpha *= 0.6;
-  for (let i = 0; i < 10; i++) {
+  for (let i = 0; i < fill(55); i++) {
     const x = Math.floor(wrap(i * 55 - off * 0.55, 55));
     R.circle(x + 12, CH - 30, 12, '#3a2a6a', Math.PI, Math.PI * 2);
   }

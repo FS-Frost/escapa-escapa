@@ -17,6 +17,7 @@ export interface Player {
   jumpArc: number;
   x: number; y: number; w: number; h: number;
   hp: number; maxHp: number;
+  hitsTaken: number;
   hitFlash: number;
   invincible: number;
   expression: Expression;
@@ -27,12 +28,13 @@ export interface Player {
   speedDemonTimer: number;
 }
 
-export function createPlayer(): Player {
+// `maxHp` is the cap health orbs can refill to (see difficulty RULES).
+export function createPlayer(lives = 3, maxLives = lives): Player {
   return {
     lane: 0, targetLane: 0, laneT: 1,
     fromY: LANE_Y[0], jumpDur: LANE_ANIM_DUR, jumpArc: LANE_ARC,
     x: PLAYER_X, y: LANE_Y[0], w: 16, h: 16,
-    hp: 1, maxHp: 1,
+    hp: lives, maxHp: maxLives, hitsTaken: 0,
     hitFlash: 0, invincible: 0,
     expression: 'normal',
     comboStreak: 0, comboMultiplier: 1,

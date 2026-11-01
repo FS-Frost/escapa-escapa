@@ -3,7 +3,8 @@ import { type Color, type RGBA, parseColor } from './color';
 import { CAP, glyph, measure } from './pixelFont';
 
 // Batched WebGL2 2D renderer. Everything (shapes + pixel-font text) is
-// vertex-colored triangles drawn into a CW×CH offscreen framebuffer, then
+// vertex-colored triangles drawn into a CW×CH offscreen framebuffer (CW varies
+// with the screen aspect), then
 // upscaled to the screen with nearest filtering by a present pass (hook for
 // post-processing).
 
@@ -82,6 +83,7 @@ export class Renderer {
   private vbo!: WebGLBuffer;
   private fbo!: WebGLFramebuffer;
   private frameTex!: WebGLTexture;
+  private frameW = 0;
   private verts = new Float32Array(MAX_VERTS * FLOATS);
   private count = 0;
   private stack: { tx: number; ty: number; alpha: number }[] = [];
@@ -114,7 +116,7 @@ export class Renderer {
 
     this.frameTex = gl.createTexture()!;
     gl.bindTexture(gl.TEXTURE_2D, this.frameTex);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, CW, CH, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+    this.allocFrame();
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
@@ -127,9 +129,18 @@ export class Renderer {
     this.count = 0;
   }
 
+  // (Re)size the offscreen frame to the current logical size (CW changes on resize/rotation).
+  private allocFrame() {
+    const gl = this.gl;
+    gl.bindTexture(gl.TEXTURE_2D, this.frameTex);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, CW, CH, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+    this.frameW = CW;
+  }
+
   // ----- frame -----
   begin() {
     const gl = this.gl;
+    if (this.frameW !== CW) this.allocFrame();
     this.count = 0;
     this.tx = 0; this.ty = 0; this.alpha = 1;
     this.stack.length = 0;
