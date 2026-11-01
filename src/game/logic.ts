@@ -75,7 +75,7 @@ function achievementsCheck(id: AchievementId) {
 
 // ===== GAME LOGIC =====
 function rectOverlap(ax: number, ay: number, aw: number, ah: number, bx: number, by: number, bw: number, bh: number) {
-  const shrink = 0.18;
+  const shrink = 0.12; // forgiving but tight: 12% of the player box on each side
   const ax2 = ax + aw * shrink, aw2 = aw * (1 - 2 * shrink);
   const ay2 = ay + ah * shrink, ah2 = ah * (1 - 2 * shrink);
   return ax2 < bx + bw && ax2 + aw2 > bx && ay2 < by + bh && ay2 + ah2 > by;

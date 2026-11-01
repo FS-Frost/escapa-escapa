@@ -113,16 +113,18 @@ The spawner is **distance-based and seeded**: a spawn fires each time `worldX` p
 ```
 gap (px)  = interval(s) · current speed
 interval  = base · difficulty.interval + warm · 0.9 + rand() · 0.3
-level     = endless/daily: (e^(worldX/20000) − 1) / (e^2 − 1), capped at 1 (worldX ≥ 40000)
+level     = endless/daily: (e^(worldX/9000) − 1) / (e^2 − 1), capped at 1 (worldX ≥ 18000 = 1800 m)
             stage: score / goalScore
-base      = stage: 1.1 · stage.interval · (1 − 0.15 · level)     endless/daily: 1.2 − 0.75 · level
-interval  ≥ 0.45 s (reaction + longest jump), random part shrinks with level
-speed     = endless/daily: base speed · (1 + 1.3 · level) → 2.3× cap     stage: stage.speed · (1 + 0.1 · level)
+base      = stage: stage.interval · (1 − 0.2 · level)     endless/daily: 1.05 − 0.65 · level
+interval  ≥ 0.4 s, random part shrinks with level
+speed     = endless/daily: base speed · (1 + 1.5 · level) → 2.5× cap     stage: stage.speed · (1 + 0.1 · level)
+(both × difficulty: hard 1.15× speed, 0.82× interval)
 warm      = max(0, 1 − worldX / 2200)
 ```
 
 - **Patterns per biome** (`BIOME_PATTERNS`): the classic set plus the biome's mechanic (swoop bats, beams, geysers; the desert mixes all three).
-- **Warm-up:** while `warm > 0` (and in stage 1), only single-obstacle patterns spawn.
+- **Weights by level:** single obstacles fade (×(1 − 0.6·level)), multi-obstacle and mechanic patterns grow (×(1 + 2·level)), and **hard patterns** appear from 0 to ×3: two-lane walls, stairs (three lanes in turn), zigzags and double walls, with steps 0.6 s apart so each step still leaves a lane free.
+- **Warm-up:** while `warm > 0` (first 1200 px, and all of stage 1), only single-obstacle patterns spawn.
 - **Opening:** each run starts with three simple obstacles already on the road (520 / 780 / 1040 px ahead).
 - **Fairness:** a candidate is rejected if, together with obstacles within `speed · 0.5 s + 40 px` of the spawn point, it would cover all three lanes (`laneSet()` counts both lanes of a geyser and a swoop's start and end lanes). Beams use `beamAllowed()`, which predicts what reaches the player when the beam fires. Up to 8 candidates are tried; otherwise it retries 20 px later.
 - **Pickups ride along** in a lane the pattern left free: 30% a row of 3 gems, 5% a power-up (after the warm-up). Health orbs (15% while hurt) use `Math.random` so they never shift the seeded sequence.
@@ -139,7 +141,7 @@ Obstacles spawn off-screen at `PLAYER_X + SPAWN_AHEAD` (1280 px; the screen ends
 | Endless | None | Random seed; biomes cycle; pace ramps | Top-5 per difficulty + daily best |
 | Daily | None | Date seed, normal difficulty | Best per day |
 
-Stages: 1-2 city (stage 1 only single obstacles), 3-4 forest, 5 sky, 6 cave, 7 volcano, 8 desert. Each stage is exponentially harder than the previous: speed ×1.065, interval ×0.93 and goal score ×1.2 per stage (25 → 90 points, 0.95× → 1.48× speed). Multi-obstacle and mechanic patterns get up to 3× likelier as the level rises. A max-level simulation over all biomes found no moment without a free lane. Stars: ★ cleared, ★ no hits, ★ reached ×4. A stage unlocks when the previous one has ≥1 star. JUGAR opens the mode select; the one-time tutorial runs as stage 1.
+Stages: 1-2 city (stage 1 only single obstacles), 3-4 forest, 5 sky, 6 cave, 7 volcano, 8 desert. Each stage is exponentially harder than the previous: speed ×1.08, interval ×0.91 and goal score ×1.2 per stage (25 → 90 points, 1.0× → 1.71× speed). Multi-obstacle and mechanic patterns get up to 3× likelier as the level rises. **Never impossible, verified:** a survivability simulation turns a long max-level Hard layout into per-lane blocked time windows and searches for a path where lane changes are ≥ 0.35 s apart (human reaction); every biome is survivable, and the same check fails at 1.5 s, so the game genuinely demands quick reactions. Stars: ★ cleared, ★ no hits, ★ reached ×4. A stage unlocks when the previous one has ≥1 star. JUGAR opens the mode select; the one-time tutorial runs as stage 1.
 
 **Gems & power-ups:** gems collected in a run are banked into the wallet when the run ends (death or victory). Shield absorbs one hit (1 s grace afterwards), magnet pulls gems within 220 px for 8 s, slow-mo scales scroll speed by 0.6 for 5 s (distance-based spawning keeps the layout unchanged).
 
@@ -151,7 +153,7 @@ Stages: 1-2 city (stage 1 only single obstacles), 3-4 forest, 5 sky, 6 cave, 7 v
 |---|---|---|---|---|
 | Easy | 5 | 5 | 0.85× | 1.2× |
 | Normal (default) | 3 | 3 | 1× | 1× |
-| Hard | 1 | 2 | 1× | 1× |
+| Hard | 1 | 2 | 1.15× | 0.82× |
 
 Hard is exactly the v1 ruleset, so v1 records live under hard. Records and daily bests are kept per difficulty; the records screen has a tab per difficulty. "Epic comeback" requires winning on the last heart after losing at least one (`hitsTaken > 0`).
 
@@ -165,7 +167,7 @@ The 26 px strip at the top maps the distance ahead of the player, `[0, SPAWN_AHE
 
 ## Collision Detection
 
-AABB with an 18% inset on the player rect for forgiving feel. Pits collide only while `targetLane === 0` and score only if the player is out of the bottom lane when they pass. Other obstacles collide only in `targetLane`; obstacles passing in an adjacent lane trigger a near-miss (scared face + blip). After a hit the player is invulnerable for 1.5 s (blinking, gold border). Collision processing stops as soon as the state leaves PLAYING, so one frame can't produce both death and victory.
+AABB with a 12% inset on the player rect. Pits collide only while `targetLane === 0` and score only if the player is out of the bottom lane when they pass. Other obstacles collide only in `targetLane`; obstacles passing in an adjacent lane trigger a near-miss (scared face + blip). After a hit the player is invulnerable for 1.5 s (blinking, gold border). Collision processing stops as soon as the state leaves PLAYING, so one frame can't produce both death and victory.
 
 ---
 

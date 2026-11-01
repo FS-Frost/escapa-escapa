@@ -12,7 +12,7 @@ export interface DifficultyRules {
 }
 
 export const RULES: Record<Difficulty, DifficultyRules> = {
-  easy: { lives: 5, maxLives: 5, speed: 0.85, interval: 1.2 },
+  easy: { lives: 5, maxLives: 5, speed: 0.85, interval: 1.25 },
   normal: { lives: 3, maxLives: 3, speed: 1, interval: 1 },
-  hard: { lives: 1, maxLives: 2, speed: 1, interval: 1 },
+  hard: { lives: 1, maxLives: 2, speed: 1.15, interval: 0.82 },
 };

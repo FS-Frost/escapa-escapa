@@ -125,7 +125,8 @@ function drawPit(o: Obstacle) {
 const at = PLAYER_X + SPAWN_AHEAD;
 
 // beam patterns spawn a lane laser (hazards.ts) instead of obstacles.
-interface Pattern { weight: number; simple?: boolean; beam?: boolean; fn: (x: number) => Obstacle[]; }
+// hard patterns are absent at level 0 and grow with the difficulty level.
+interface Pattern { weight: number; simple?: boolean; beam?: boolean; hard?: boolean; fn: (x: number) => Obstacle[]; }
 
 const BASE_PATTERNS: Pattern[] = [
   { weight: 3, simple: true, fn: x => [makeObs('zombie', 0, x)] },
@@ -137,7 +138,29 @@ const BASE_PATTERNS: Pattern[] = [
   { weight: 1, fn: x => [makeObs('pit', 0, x)] },
   { weight: 1, fn: x => [makeObs('zombie', 1, x), makeObs('bat', 2, x + 10)] },
   { weight: 1, fn: x => [makeObs('spike', 0, x), makeObs('ghost', 2, x)] },
+  // Hard patterns (see weightOf): walls, stairs and zigzags that force quick
+  // successive moves. Steps are STEP_S apart at the current speed, more than
+  // the fairness window, so each step always leaves a lane free.
+  { weight: 3, hard: true, fn: x => wall(randInt(3), x) },
+  { weight: 2, hard: true, fn: x => { const [a, b, c] = shuffled(); return [lone(a, x), lone(b, x + step()), lone(c, x + 2 * step())]; } },
+  { weight: 2, hard: true, fn: x => { const a = randInt(3), b = (a + 1 + randInt(2)) % 3; return [lone(a, x), lone(b, x + step()), lone(a, x + 2 * step())]; } },
+  { weight: 2, hard: true, fn: x => { const g = randInt(3); return [...wall(g, x), ...wall((g + 1 + randInt(2)) % 3, x + 1.2 * step())]; } },
 ];
+
+// Lane-appropriate single hazard: ground lane walkers/spikes, top lane fliers.
+function lone(lane: number, x: number): Obstacle {
+  const types: ObsType[][] = [['zombie', 'spike'], ['zombie', 'bat'], ['bat', 'ghost']];
+  return makeObs(types[lane][randInt(2)], lane, x);
+}
+// Two hazards side by side, leaving only lane `gap` open.
+const wall = (gap: number, x: number) => [0, 1, 2].filter(l => l !== gap).map(l => lone(l, x));
+function shuffled(): number[] {
+  const a = [0, 1, 2];
+  for (let i = 2; i > 0; i--) { const j = randInt(i + 1); [a[i], a[j]] = [a[j], a[i]]; }
+  return a;
+}
+const STEP_S = 0.6;
+const step = () => world.scrollSpeed * world.speedBoost * STEP_S;
 
 // Swoop bats move to an adjacent lane.
 const swoop = (weight = 3): Pattern => ({
@@ -162,16 +185,16 @@ const BIOME_PATTERNS: Pattern[][] = [
 ];
 
 // Gentle start: the first WARMUP_DIST px spawn single obstacles, further apart.
-const WARMUP_DIST = 2200;
+const WARMUP_DIST = 1200;
 const WARMUP_EXTRA_INTERVAL = 0.9;
 // Endless/daily difficulty: an exponential curve over distance that reaches
 // its cap at RAMP_DIST px — slow at first, then steeper and steeper.
-const RAMP_DIST = 40000;
-const RAMP_K = 20000; // smaller = flatter start, sharper end
+const RAMP_DIST = 18000;
+const RAMP_K = 9000; // smaller = flatter start, sharper end
 // Fairness: around any spawn, obstacles within this time window (reaction +
 // longest jump) must leave at least one lane free.
 const FAIR_WINDOW_S = 0.5;
-const MIN_INTERVAL_S = 0.45;
+const MIN_INTERVAL_S = 0.4;
 const FAIR_RETRY_PX = 20;
 const GEM_CHANCE = 0.3;
 const POWER_CHANCE = 0.05;
@@ -179,7 +202,9 @@ const ORB_CHANCE = 0.15;
 
 // Harder levels favour multi-obstacle patterns and biome mechanics (up to 3×).
 function weightOf(p: Pattern): number {
-  return p.simple ? p.weight : p.weight * (1 + 2 * difficultyLevel());
+  const level = difficultyLevel();
+  if (p.hard) return p.weight * 3 * level;
+  return p.simple ? p.weight * (1 - 0.6 * level) : p.weight * (1 + 2 * level);
 }
 
 function pick(pool: Pattern[]): Pattern {
@@ -188,14 +213,17 @@ function pick(pool: Pattern[]): Pattern {
   return pool[0];
 }
 
-// True if adding `candidate` would leave no free lane near the spawn point.
+// True if adding `candidate` would leave no free lane around any of its
+// obstacles (patterns can span several x positions).
 function blocksAllLanes(candidate: Obstacle[], x: number): boolean {
   const gap = world.scrollSpeed * world.speedBoost * FAIR_WINDOW_S + 40;
-  const lanes = new Set<number>();
-  for (const o of [...world.obstacles, ...candidate]) {
-    if (!isPickup(o) && Math.abs(o.x - x) < gap) for (const l of laneSet(o)) lanes.add(l);
-  }
-  return lanes.size >= LANE_COUNT;
+  const all = [...world.obstacles, ...candidate].filter(o => !isPickup(o));
+  const centers = candidate.length ? candidate.map(c => c.x) : [x];
+  return centers.some(cx => {
+    const lanes = new Set<number>();
+    for (const o of all) if (Math.abs(o.x - cx) < gap) for (const l of laneSet(o)) lanes.add(l);
+    return lanes.size >= LANE_COUNT;
+  });
 }
 
 // 0..1 difficulty level. Endless/daily: exponential in distance, capped.
@@ -212,14 +240,14 @@ export const endlessRamp = difficultyLevel;
 export function baseScrollSpeed(): number {
   const rules = RULES[world.difficulty];
   if (world.stage) return BASE_SPEED * rules.speed * world.stage.speed * (1 + 0.1 * difficultyLevel());
-  return BASE_SPEED * rules.speed * (1 + 1.3 * difficultyLevel());
+  return BASE_SPEED * rules.speed * (1 + 1.5 * difficultyLevel());
 }
 
 function spawnInterval(warm: number): number {
   const rules = RULES[world.difficulty];
   const level = difficultyLevel();
-  const base = world.stage ? 1.1 * world.stage.interval * (1 - 0.15 * level) : 1.2 - 0.75 * level;
-  return Math.max(MIN_INTERVAL_S, base * rules.interval) + warm * WARMUP_EXTRA_INTERVAL + rand() * 0.3 * (1 - 0.5 * level);
+  const base = world.stage ? world.stage.interval * (1 - 0.2 * level) : 1.05 - 0.65 * level;
+  return Math.max(MIN_INTERVAL_S, base * rules.interval) + warm * WARMUP_EXTRA_INTERVAL + rand() * 0.25 * (1 - 0.6 * level);
 }
 
 export function updateSpawner(biome: number) {
